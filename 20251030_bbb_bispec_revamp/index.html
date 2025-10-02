@@ -80,11 +80,30 @@
                     'Frequency|nu':[
                         '100|100'
                     ],
+                    'Jackknife|jk':[
+                        'None|',
+                        'j1|_j1',
+                        'j2|_j2',
+                        'j3|_j3',
+                        'j4|_j4',
+                        'j5|_j5',
+                        'j6|_j6',
+                        'j7|_j7',
+                        'j8|_j8',
+                        'j9|_j9',
+                        'ja|_ja',
+                        'jb|_jb',
+                        'jc|_jc',
+                        'jd|_jd',
+                        'je|_je',
+
+                    ],
 
                 }, function (params) {
                     let dirbase = '/liuto/home/GitHub/bispec_project/fnl_figs/';
                     let filename = 'b3d_1var_nu' + params.nu + 
-                                '_lx0_nobl_lcdm_oL' + params.oL + 
+                                '_lx0_nobl_lcdm' + params.jk + 
+                                '_dp1102_oL' + params.oL + 
                                 '_b' + params.bn + 
                                 '_diag' + params.zerodiag
                     let filepath = dirbase + filename + '.png'
@@ -97,6 +116,7 @@
                      'oL': '20-350',
                      'zerodiag': 'False',
                      'nu': '100',
+                     'jk':'',
                 }
 
                 );

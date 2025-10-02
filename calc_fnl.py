@@ -3,7 +3,7 @@ import argparse
 import sys
 import os
 import matplotlib
-matplotlib.use('TkAgg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 #Local projects
@@ -11,7 +11,7 @@ sys.path.insert(0, '/n/home02/toshiyan/Lib/cmblensplus/utils/')
 import analysis as ana
 
 
-def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id):
+def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,jackknife):
     """
     Loads and preprocesses data for a given experiment configuration.
     
@@ -37,11 +37,13 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id)
         raise FileNotFoundError()
 
     if bk_type == 'B33y':
-        tag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm_{ell_range}_b{bn}'
+        tag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm{jackknife}_{ell_range}_b{bn}'
 
-        observed_bl_path = os.path.join(data_path, f'{tag.replace("cdm", "cdm_Vdst")}_1.dat')
+        observed_bl_path = os.path.join(data_path, f'{tag.replace("_oL", "_dp1102_oL")}_0.dat')
         sim_bl_template = os.path.join(data_path, f'{tag}_' + '{}.dat')
-        fiducial_bl_path = os.path.join(data_path, f'{tag.replace("b3d", "mb3d_fnle")}.dat')
+        nojacktag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm_{ell_range}_b{bn}'
+
+        fiducial_bl_path = os.path.join(data_path, f'{nojacktag.replace("b3d", "mb3d_fnle")}.dat')
 
 # Check if files exist
         if not os.path.exists(observed_bl_path):
@@ -53,7 +55,10 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id)
             raise FileNotFoundError()
 
             
-        observed_bl = np.loadtxt(observed_bl_path).T[data_id, :]
+        observed_bl = np.loadtxt(observed_bl_path).T
+        if(data_id == -1):
+            data_id = observed_bl.shape[0]-1
+        observed_bl = observed_bl[data_id, :]
         print(f'Loading sim_bl from template: {sim_bl_template}')
         # Load simulated data with progress
         sim_bl_list = []
@@ -130,13 +135,19 @@ def plot_fnl_hists(sim_fnl, obs_fnl, title_name, outpath):
         obs_fnl (float): The single observed fNL value.
     """
     plt.figure(figsize=(10, 6))
-    bins = np.arange(-5000, 5000+250, 250)
-    
     sim_mean = np.mean(sim_fnl)
     sim_std = np.std(sim_fnl)
     
+    if(sim_std > 10):
+        bin_range = 5000
+    else:
+        bin_range = 5
+    bin_width = bin_range/20
+    bins = np.arange(-bin_range, bin_range+bin_width, bin_width)
+    
+        
     print('Clipping outliers for visualization')
-    sim_fnl = np.clip(sim_fnl, -5000,5000)
+    sim_fnl = np.clip(sim_fnl, -bin_range,bin_range)
     plt.hist(sim_fnl, bins=bins, density=False, alpha=0.6, color='skyblue', label='Simulated fNL ' + str(np.round(sim_mean,3)) + '+-' + str(np.round(sim_std,3)))
     
     # Plot the observed fNL value as a vertical red line.
@@ -178,16 +189,16 @@ def get_amplitudes_from_file(filepath):
 
 def main(args):
     
-    outdir = 'fnl_figs'
+    outdir = args.outdir
     if(not os.path.exists(outdir)):
         os.mkdir(outdir)
     for freq in args.freqs:
-        tag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm_{args.ell_range}_b{args.bn}'
+        tag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm{args.jackknife}_dp1102_{args.ell_range}_b{args.bn}'
         amplitudes_file = os.path.join(outdir, tag + '.csv')
         if(not os.path.exists(amplitudes_file)):
             # Load and preprocess the data
             observed_bl, sims_bl, fiducial_bl = load_experiment_data(args.bk, freq, 
-                                                args.bn, args.ell_range, args.simn, args.data, args.id)
+                                                args.bn, args.ell_range, args.simn, args.data, args.id, args.jackknife)
         
             # Run the amplitude statistics calculation
             print('Calculating amplitudes')
@@ -197,11 +208,26 @@ def main(args):
             fnl_hists, fnl_obs  = get_amplitudes_from_file(amplitudes_file)
         print('Plotting Amplitudes')
         for diag in [True, False]:
-            title_name = f'{freq}GHz lCDM ell {args.ell_range} with {args.bn} bins and Diag = ' + str(diag)
+            title_name = f'{freq}GHz lCDM ell {args.ell_range} with {args.bn} bins and Diag = {diag} Jackknife={args.jackknife}'
             
             outpath = os.path.join(outdir, tag + '_diag' + str(diag) + '.png')
             plot_fnl_hists(fnl_hists[diag], fnl_obs[diag], title_name, outpath)
 
+def ensure_underscores(s):
+    """
+    Ensures a string is surrounded by underscores.
+    
+    Args:
+        s (str): The input string.
+
+    Returns:
+        str: The string with underscores added if they were missing.
+    """
+    if(not s):
+        return ""
+    if not s.startswith('_'):
+        s = '_' + s
+    return s
 
 if __name__ == "__main__":
     """
@@ -212,27 +238,38 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Calculate bispectrum statistics.')
     parser.add_argument('--bn', type=int, default=10, help='Bin number parameter.')
     parser.add_argument('--bk', type=str, default='B33y', help='Experiment type (e.g., BK15 or B33y).')
-    parser.add_argument('--id', type=int, default=3, help='ID column for data extraction.')
+    parser.add_argument('--id', type=int, default=-1, help='ID column for data extraction.')
     parser.add_argument('--freqs', nargs='+', default=['100'], help='List of frequencies to analyze.')
     parser.add_argument('--simn', type=int, default=499, help='Number of simulations.')
     
     parser.add_argument('--ell_range', type=str, default='oL1-300', 
                 help='The ell_range parameter for file names (e.g., oL1-300, 20-350, 20-580, 30-350).')
-    
+    parser.add_argument('--jackknife', type=str, default='',
+                            help='Jackknife type')
     parser.add_argument('--data', type=str, 
                 default='/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/', 
                 help='Base data directory.')
 
     
     args = parser.parse_args()
-    for ellrange in ['oL1-300', 'oL20-350', 'oL20-580', 'oL30-350']:
-        for bin_num in [7,8,9, 10, 11,16]:
-            args.bn = bin_num
-            args.ell_range = ellrange
-            try:
-                main(args)
-            except FileNotFoundError:
-                print('Combo does not exist: ' + ellrange + ' bn' + str(bin_num))
-                pass
+    if(args.data == 'liuto'):
+        args.data = '/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/'
+    if('liuto' in args.data):
+        args.outdir = 'fnl_figs_scaled'    
+    elif('namikawa' in args.data):
+        args.outdir = 'fnl_figs'
+    for ellrange in ['oL20-350']:#,'oL30-350']:#, 'oL20-580']:#, 'oL30-350']:
+        for bin_num in [9]:#,8,9]:#[7,8,9, 10, 11,16]:
+            for jack in ['']:#,'j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'j7', 'j8', 'j9', 'ja', 'jb', 'jc', 'jd', 'je']:
+                
+                args.bn = bin_num
+                args.ell_range = ellrange
+                
+                try:
+                    args.jackknife=ensure_underscores(jack)
+                    main(args)
+                except FileNotFoundError:
+                    print('Combo does not exist: ' + ellrange + ' bn' + str(bin_num))
+                    pass
 
 
