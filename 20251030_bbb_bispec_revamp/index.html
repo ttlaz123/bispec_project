@@ -59,6 +59,10 @@
 
             <script type="text/javascript">
                 pager.link("#fnl", {
+                    'fNL sim value|scaling':[
+                        'fNL = 0|',
+                        'fNL = 1000|_scaled',
+                    ],
                     'Bin Num|bn': [
                         '7|7',
                         '8|8',
@@ -100,7 +104,8 @@
                     ],
 
                 }, function (params) {
-                    let dirbase = '/liuto/home/GitHub/bispec_project/fnl_figs/';
+                    let dirbase = '/liuto/home/GitHub/bispec_project/';
+                    dirbase = dirbase + 'fnl_figs' + params.scaling + '/'
                     let filename = 'b3d_1var_nu' + params.nu + 
                                 '_lx0_nobl_lcdm' + params.jk + 
                                 '_dp1102_oL' + params.oL + 
