@@ -5,13 +5,14 @@ import os
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import pandas as pd
 #Local projects
 sys.path.insert(0, '/n/home02/toshiyan/Lib/cmblensplus/utils/')
 import analysis as ana
 
 
-def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,jackknife):
+def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,jackknife,fiducial_data_path = None, fnl=''):
     """
     Loads and preprocesses data for a given experiment configuration.
     
@@ -38,12 +39,15 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,
 
     if bk_type == 'B33y':
         tag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm{jackknife}_{ell_range}_b{bn}'
-
         observed_bl_path = os.path.join(data_path, f'{tag.replace("_oL", "_dp1102_oL")}_0.dat')
         sim_bl_template = os.path.join(data_path, f'{tag}_' + '{}.dat')
-        nojacktag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm_{ell_range}_b{bn}'
+        if(not fnl == ''):
+            sim_bl_template = os.path.join(data_path, f'{tag}_' + '{}' + f'_fnl{fnl}.dat')
 
-        fiducial_bl_path = os.path.join(data_path, f'{nojacktag.replace("b3d", "mb3d_fnle")}.dat')
+        nojacktag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm_{ell_range}_b{bn}'
+        if(fiducial_data_path is None):
+            fiducial_data_path = data_path
+        fiducial_bl_path = os.path.join(fiducial_data_path, f'{nojacktag.replace("b3d", "mb3d_fnle")}.dat')
 
 # Check if files exist
         if not os.path.exists(observed_bl_path):
@@ -66,9 +70,10 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,
             file_path = sim_bl_template.format(i + 1)
             if(i % 50 == 0):
                 print(f"Loading simulated file {i + 1}/{simn}: {file_path}")
-            sim_bl_list.append(np.loadtxt(file_path).T[data_id, :])
+            txtfile = np.loadtxt(file_path)
+            sim_bl_list.append(txtfile.T[data_id, :])
         sim_bl = np.array(sim_bl_list)
-        print('Loading fiducial_bl')
+        print('Loading fiducial_bl:' + fiducial_bl_path)
         fiducial_bl = np.loadtxt(fiducial_bl_path, unpack=True)
         
     else:
@@ -99,25 +104,85 @@ def calc_single_amplitude(relative_amplitude, covmat, diag):
     amplitude = np.sum(col_sums * relative_amplitude) / total_sum
     return amplitude
 
-def run_amplitude_statistics(observed_bl, sim_bl, fiducial_bl):
+def calc_single_amplitude_bruteforce(fiducial_bl, covmat, sim_bl, diag):
+    if(diag):
+        covmat = np.diag(np.diag(covmat))
+    inv_cov = np.linalg.inv(covmat)
+    total_sum = np.sum(inv_cov)
+    fnl = np.matmul(np.matmul(fiducial_bl, inv_cov), sim_bl)
+    return fnl
+
+def plot_covmat(mat):
+    nonzeros = np.abs(mat[(mat!=0) &( ~np.isnan(mat))])
+    vpercent = np.percentile(nonzeros, 99)
+    vmax = np.max(nonzeros)
+    linthresh = np.percentile(nonzeros, 1)
+    log_mags = np.logspace(np.floor(np.log10(linthresh)), 
+                        np.ceil(np.log10(vmax)), num=10, base=10)
+    custom_ticks = np.concatenate([
+                 -log_mags[::-1],  # Negative ticks (reversed)
+                [0.0],            # Zero tick
+                log_mags          # Positive ticks
+            ])
+    cmap = plt.get_cmap('seismic')
+    norm = mcolors.SymLogNorm(linthresh=linthresh,
+                            vmin=-vpercent,vmax = vpercent, base=10)
+    plt.figure()
+    #plt.imshow(cov_mat_inv, cmap=cmap, vmin=-vpercent, vmax=vpercent)
+    plt.imshow(mat,cmap=cmap, norm = norm)
+    plt.title('Inverse covar matrix')
+    plt.xlabel('bispec bin ijk')
+    plt.ylabel('bispec bin ijk')
+    plt.colorbar(ticks=custom_ticks, format='%.1e')
+    #plt.colorbar()
+    plt.savefig('invcovmat.png')
+
+def run_amplitude_statistics(observed_bl, sim_bl, fiducial_bl, sim_cov_bls = None):
     """
     Computes amplitude statistics for both diagonal and full covariance matrices.
     """
     fnl_hists = {}
     fnl_obs = {}
     num_sims = sim_bl.shape[0]
+    brute_force = False
     for diag in [True, False]:
+         
         sim_amplitudes = sim_bl/fiducial_bl
-        cov_mat = compute_covariance_matrix(sim_amplitudes)
-        observed_amplitude = calc_single_amplitude(observed_bl/fiducial_bl,
+        if(brute_force):
+            cov_mat = compute_covariance_matrix(sim_cov_bls)
+            if(diag):
+                cov_mat = np.diag(np.diag(cov_mat))
+            avg_sim_bls = np.mean(sim_cov_bls, axis=0)
+            cov_mat_inv = np.linalg.inv(cov_mat)
+            plot_covmat(cov_mat_inv)
+            denom = np.matmul(np.matmul(avg_sim_bls, cov_mat_inv), avg_sim_bls)
+
+        elif(sim_cov_bls is None):
+            cov_mat = compute_covariance_matrix(sim_amplitudes)
+        else:
+            cov_mat = compute_covariance_matrix(sim_cov_bls/fiducial_bl)
+        if(diag):
+            cov_mat = np.diag(np.diag(cov_mat))
+        if(brute_force):
+            numer = np.matmul(np.matmul(observed_bl, cov_mat_inv),fiducial_bl)
+            observed_amplitude = numer/denom
+        else:
+            observed_amplitude = calc_single_amplitude(observed_bl/fiducial_bl,
                                             cov_mat, diag)
         fnl_obs[diag] = (observed_amplitude)
         sim_amplitudes_hist = []
         for i in range(num_sims):
-            
-            leave_one_out_covs = np.cov(np.delete(sim_amplitudes, i, 0), 
+            if(sim_cov_bls is None and not brute_force): 
+                leave_one_out_covs = np.cov(np.delete(sim_amplitudes, i, 0), 
                                                 rowvar=0)
-            amplitude_i = calc_single_amplitude(sim_amplitudes[i],
+            else:
+                leave_one_out_covs = cov_mat
+            if(brute_force):
+                numer = np.matmul(np.matmul(avg_sim_bls, cov_mat_inv),sim_bl[i])
+                amplitude_i = numer/denom
+
+            else:
+                amplitude_i = calc_single_amplitude(sim_amplitudes[i],
                                         leave_one_out_covs, diag)
             sim_amplitudes_hist.append(amplitude_i)
 
@@ -137,7 +202,7 @@ def plot_fnl_hists(sim_fnl, obs_fnl, title_name, outpath):
     plt.figure(figsize=(10, 6))
     sim_mean = np.mean(sim_fnl)
     sim_std = np.std(sim_fnl)
-    
+    '''
     if(sim_std > 10):
         bin_range = 5000
     else:
@@ -145,13 +210,17 @@ def plot_fnl_hists(sim_fnl, obs_fnl, title_name, outpath):
     bin_width = bin_range/20
     bins = np.arange(-bin_range, bin_range+bin_width, bin_width)
     
-        
-    print('Clipping outliers for visualization')
-    sim_fnl = np.clip(sim_fnl, -bin_range,bin_range)
-    plt.hist(sim_fnl, bins=bins, density=False, alpha=0.6, color='skyblue', label='Simulated fNL ' + str(np.round(sim_mean,3)) + '+-' + str(np.round(sim_std,3)))
+    if(sim_std > 5000 or sim_std < 0.01):
+        bins = None
+    else:    
+        print('Clipping outliers for visualization')
+        sim_fnl = np.clip(sim_fnl, -bin_range,bin_range)
+    '''
+    bins=40
+    plt.hist(sim_fnl, bins=bins, density=False, alpha=0.6, color='skyblue', label='Simulated fNL ' + str(np.round(sim_mean,6)) + '+-' + str(np.round(sim_std,6)))
     
     # Plot the observed fNL value as a vertical red line.
-    plt.axvline(obs_fnl, color='red', linestyle='dashed', linewidth=2, label='Observed fNL = '+ str(np.round(obs_fnl,3)))
+    plt.axvline(obs_fnl, color='red', linestyle='dashed', linewidth=2, label='Observed fNL = '+ str(np.round(obs_fnl,6)))
     
     # Add labels, a title, and a legend to make the plot clear.
     plt.xlabel('fNL Value')
@@ -194,21 +263,34 @@ def main(args):
         os.mkdir(outdir)
     for freq in args.freqs:
         tag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm{args.jackknife}_dp1102_{args.ell_range}_b{args.bn}'
+        if(not args.fnl ==''):
+            tag = f'{tag}_fnl{args.fnl}'
         amplitudes_file = os.path.join(outdir, tag + '.csv')
-        if(not os.path.exists(amplitudes_file)):
+        if(not os.path.exists(amplitudes_file) or args.overwrite):
             # Load and preprocess the data
+            if(not args.covdata is None):
+                observed_bl, sim_cov_bls, fiducial_bl = load_experiment_data(args.bk, freq, 
+                                                args.bn, args.ell_range, args.simn, args.covdata, args.id, args.jackknife, fiducial_data_path=args.covdata)
+            else:
+                sim_cov_bls = None
             observed_bl, sims_bl, fiducial_bl = load_experiment_data(args.bk, freq, 
-                                                args.bn, args.ell_range, args.simn, args.data, args.id, args.jackknife)
-        
+                                                args.bn, args.ell_range, args.simn, args.data, args.id, args.jackknife, fnl=args.fnl)
+            
             # Run the amplitude statistics calculation
             print('Calculating amplitudes')
-            fnl_hists, fnl_obs = run_amplitude_statistics(observed_bl, sims_bl, fiducial_bl)
+            fnl_hists, fnl_obs = run_amplitude_statistics(observed_bl, sims_bl, 
+                                                            fiducial_bl, sim_cov_bls)
+            
             save_amplitudes_to_file(amplitudes_file, fnl_hists, fnl_obs)
         else:
             fnl_hists, fnl_obs  = get_amplitudes_from_file(amplitudes_file)
         print('Plotting Amplitudes')
         for diag in [True, False]:
-            title_name = f'{freq}GHz lCDM ell {args.ell_range} with {args.bn} bins and Diag = {diag} Jackknife={args.jackknife}'
+            title_name = f'{freq}GHz lCDM ell {args.ell_range} with {args.bn} bins and Diag = {diag}' 
+            if(not args.jackknife ==''):
+                title_name = f'{title_name}, Jackknife={args.jackknife}'
+            if(not args.fnl == ''):
+                title_name = f'{title_name}, injected fnl={args.fnl}'
             
             outpath = os.path.join(outdir, tag + '_diag' + str(diag) + '.png')
             plot_fnl_hists(fnl_hists[diag], fnl_obs[diag], title_name, outpath)
@@ -247,18 +329,32 @@ if __name__ == "__main__":
     parser.add_argument('--jackknife', type=str, default='',
                             help='Jackknife type')
     parser.add_argument('--data', type=str, 
-                default='/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/', 
+                default='/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/', 
                 help='Base data directory.')
+    parser.add_argument('--covdata', type=str, 
+                default='/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/', 
+                help='Base data directory for calculating covariance matrix.')
+
+    parser.add_argument('-o', '--overwrite', action='store_true',
+                    help = 'whether to overwrite the csv file')
+    parser.add_argument('--fnl', default='', 
+                    help='fnl value: 0001, 0010, 0100, 0032, 1000')
 
     
     args = parser.parse_args()
     if(args.data == 'liuto'):
         args.data = '/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/'
+    elif(args.data == 'namikawa'):
+        args.data = '/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/'
     if('liuto' in args.data):
         args.outdir = 'fnl_figs_scaled'    
     elif('namikawa' in args.data):
-        args.outdir = 'fnl_figs'
-    for ellrange in ['oL20-350']:#,'oL30-350']:#, 'oL20-580']:#, 'oL30-350']:
+        args.outdir = 'fnl_figs_test'
+    if(args.covdata=='None'):
+        args.covdata = None
+        args.outdir='fnl_figs_defcov'
+
+    for ellrange in ['oL30-350']:#,'oL30-350']:#, 'oL20-580']:#, 'oL30-350']:
         for bin_num in [9]:#,8,9]:#[7,8,9, 10, 11,16]:
             for jack in ['']:#,'j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'j7', 'j8', 'j9', 'ja', 'jb', 'jc', 'jd', 'je']:
                 
