@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Revamping the BBB Bispectrum Project</title>
+    <title>Revisiting the BBB Bispectrum Project</title>
     <link rel="stylesheet" type="text/css" href="style.css">
     <!-- Load up MathJax for math notation -->
     <script type="text/x-mathjax-config">
@@ -21,7 +21,7 @@
     <link rel="stylesheet" type="text/css" href="scripts/pager.css">
 
     <header>
-        <h1>BBB Bispectrum fNL Calculations</h1>
+        <h1>Revisiting the BBB Bispectrum Project</h1>
         <time datetime="2025-10-30" class="published updated">2025 October 30</time> —
         Tongtian (Tom) Liu
     </header>
@@ -30,9 +30,11 @@
 
     <section>
         <h2>Introduction</h2>
-        <p><strong>Summary:</strong>
-            Recalculating fNL using files from <code>/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/</code>
-        </p>
+       <p><strong>Summary:</strong>
+        We reproduce Toshiya's BBB bispectrum results to verify our estimator for the standard BK sims. 
+        We then add a nongaussian part, scaled by \(f_{NL}\) to test the estimator's ability to recover the injected nongausianity.
+        The estimator currently does not appear to accurately recover injected large \(f_{NL}\).
+    </p>
 
         <p>This posting builds upon previous updates:</p>
         <ul>
@@ -42,12 +44,36 @@
             <li><a href="../20200703_bispec/">2020-07-03: Polarization Bispectrum Analysis</a></li>
             <li><a href="../20190805_bispec/">2019-08-05: Polarization Bispectrum Analysis</a></li>
         </ul>
-
-    
+        <p>
+        While the simplest inflationary models predict that primordial fluctuations should be nearly Gaussian, 
+        any deviations from this is captured by higher-order correlation functions like the bispectrum, and it can constrain more complex 
+        inflationary scenarios. The \(B\)-mode bispectrum (BBB) provides a way to search for 
+        primordial non-Gaussianity, quantified by the parameter $\mathbf{f_{NL}}$. 
+        A non-zero $f_{NL}$ could indicate different models of inflation, including thos with axion fields.
+    </p>
+    <p>
+        <a href="https://arxiv.org/pdf/1905.05697">Planck's 2019 paper</a> provides a more thorough definition of the different types of bispectra 
+        (equilateral, local, orthogonal) and their relationship with the \(f_{NL}\) parameter.
+        Toshiya's <a href="https://www.overleaf.com/project/66212da42d93d0485590c09c">paper draft</a> and previous postings outline the 
+        derivations for calculating the specific bispectrum and \(f_{NL}\) that BICEP is sensitive to, namely the equilateral B-mode bispectrum, 
+        which we refer to as \(f_{NL}^{tens}\).
+        </p>
+        <p>
+            To summarize, Toshiya's pipeline generates three different sets of \(a_{lm}\)'s: \(a_{lm}^{BICEP}\), \(a_{lm}^{G}\), and \(a_{lm}^{NG}\).
+            Where \(a_{lm}^{BICEP}\) represents the standard BICEP sims, including dust and noise,  \(a_{lm}^{G}\) is a set of guassian simulations
+            without dust or noise, and \(a_{lm}^{NG}\) represents the non-gaussian components. Thus, 
+            \(a^{tot}_{lm} = \sqrt{r}  \(a_{lm}^{G}\) + A\frac{f_{NL}^{tens}\(a_{lm}^{NG}\)}{r}\)
+            where \(r\) is the tensor to scalar ratio, and A=10^50 is a constant scaling factor used by Toshiya when saving his files. 
+        </p>
+        <p>
+            The \(a_{lm}\)'s are then used to calculate filtered maps. The maps are binned and used to extract the binned BBB bispectra \(b_{ijk}\),
+            where \(ijk\) refers to the combination of the BICEP bins.
+            The calculated bispectra are then run through the estimator as calculated in 
+        </p>
     </section>
 
     <section>
-     
+     Recalculating fNL using files from <code>/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/</code>
 
         <figure>
             <img alt="Remade fNL histograms" id="fnl" src="#" width="750" height="500"
