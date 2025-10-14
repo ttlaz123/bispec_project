@@ -51,6 +51,8 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,
 
 # Check if files exist
         if not os.path.exists(observed_bl_path):
+            observed_bl_path = os.path.join(data_path, f'{tag.replace("_oL", "_dp1102_oL")}_0_fnl{fnl}.dat')
+        if not os.path.exists(observed_bl_path):
             print(f"Error: Observed file not found: {observed_bl_path}")
             raise FileNotFoundError()
 
@@ -270,7 +272,7 @@ def main(args):
             # Load and preprocess the data
             if(not args.covdata is None):
                 observed_bl, sim_cov_bls, fiducial_bl = load_experiment_data(args.bk, freq, 
-                                                args.bn, args.ell_range, args.simn, args.covdata, args.id, args.jackknife, fiducial_data_path=args.covdata)
+                                                args.bn, args.ell_range, args.simn, args.covdata, args.id, args.jackknife, fiducial_data_path=args.covdata, fnl='0000')
             else:
                 sim_cov_bls = None
             observed_bl, sims_bl, fiducial_bl = load_experiment_data(args.bk, freq, 
@@ -347,14 +349,16 @@ if __name__ == "__main__":
     elif(args.data == 'namikawa'):
         args.data = '/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/'
     if('liuto' in args.data):
-        args.outdir = 'fnl_figs_scaled'    
+        args.outdir = 'fnl_figs_scaled2'    
     elif('namikawa' in args.data):
         args.outdir = 'fnl_figs_test'
     if(args.covdata=='None'):
         args.covdata = None
         args.outdir='fnl_figs_defcov'
+    if(args.covdata == 'liuto'):
+        args.covdata = '/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/'
 
-    for ellrange in ['oL30-350']:#,'oL30-350']:#, 'oL20-580']:#, 'oL30-350']:
+    for ellrange in ['oL20-350']:#,'oL30-350']:#, 'oL20-580']:#, 'oL30-350']:
         for bin_num in [9]:#,8,9]:#[7,8,9, 10, 11,16]:
             for jack in ['']:#,'j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'j7', 'j8', 'j9', 'ja', 'jb', 'jc', 'jd', 'je']:
                 
