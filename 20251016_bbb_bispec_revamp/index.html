@@ -60,7 +60,7 @@
         </p>
         <p>
             To summarize, Toshiya's pipeline generates three different sets of \(a_{lm}\)'s: \(a_{lm}^{BICEP}\), \(a_{lm}^{G}\), and \(a_{lm}^{NG}\).
-            Where \(a_{lm}^{BICEP}\) represents the standard BICEP sims, including dust and noise,  \(a_{lm}^{G}\) is a set of guassian simulations
+            Where \(a_{lm}^{BICEP}\) represents the standard BICEP sims with 499 realizations, including dust and noise,  \(a_{lm}^{G}\) is a set of guassian simulations
             without dust or noise, and \(a_{lm}^{NG}\) represents the non-gaussian components. To inject nonGaussianity, we have, 
             \(a^{tot}_{lm} = \sqrt{r}  a_{lm}^{G} + A\frac{f_{NL}^{tens}a_{lm}^{NG}}{r}\)
             where \(r\) is the tensor to scalar ratio, and \(A=10^{-50}\) is a constant scaling factor used when saving files 
@@ -95,7 +95,8 @@
             <figcaption>
                
                 Recreating histograms in the Overleaf draft Fig. 1. We produce plots for all of the saved bispectrum files, 
-                including different multipole ranges, jackknife tests, and bin numbers.
+                including different multipole ranges, jackknife tests, and bin numbers. The plots show the mean and spread 
+                of the recovered fNL parameter over 499 simulation realizations.
 
                 The parameters used in Fig. 1 correspond to bin num = 7, 8, 9, ell range = 20-350, full covariance matrices, and no jackknife. 
             </figcaption>
@@ -201,8 +202,10 @@ The files are then saved in <code>/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/b
                we only consider bin num = 9 and test limited number of ell ranges. In the alm definition option, 
                alm refers to \(a^{tot}_{lm}\), alm_bicep refers to \(a^{BICEP}_{lm} \), glm refers to \(\sqrt{r}  a_{lm}^{G}\), 
                and flm refers to \( A \frac{a_{lm}^{NG}}{r}\).
-
+                
                The second ell range is there to ensure that the issues are not specific to one ell range configuration.
+               The plots show the mean and spread 
+                of the recovered fNL parameter over 499 simulation realizations.
 
 
             </figcaption>
@@ -275,7 +278,8 @@ The files are then saved in <code>/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/b
       for bin combinations where their difference is is 5 or less).
       
       
-      Below is a table of the important values:
+      Below is a table of the mean and one sigma spread on \(f_{NL}\) for the 499 sim realizations. 
+      We include the relevant parameter configurations, where the ell range is 20-350, and we use the full covariance matrix.
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
     <tr>
