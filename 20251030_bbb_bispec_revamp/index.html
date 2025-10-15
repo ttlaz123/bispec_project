@@ -63,12 +63,14 @@
             Where \(a_{lm}^{BICEP}\) represents the standard BICEP sims, including dust and noise,  \(a_{lm}^{G}\) is a set of guassian simulations
             without dust or noise, and \(a_{lm}^{NG}\) represents the non-gaussian components. To inject nonGaussianity, we have, 
             \(a^{tot}_{lm} = \sqrt{r}  a_{lm}^{G} + A\frac{f_{NL}^{tens}a_{lm}^{NG}}{r}\)
-            where \(r\) is the tensor to scalar ratio, and \(A=10^{-50}\) is a constant scaling factor used when saving files (potentially for readability reasons?). 
+            where \(r\) is the tensor to scalar ratio, and \(A=10^{-50}\) is a constant scaling factor used when saving files 
+            (potentially for readability reasons?). 
         </p>
         <p>
             The \(a_{lm}\)'s are then used to calculate filtered maps. The maps are binned and used to extract the binned BBB bispectra \(b_{ijk}\),
             where \(ijk\) refers to the combination of the BICEP bins.
-            As stated in eq (26) of <a href="https://www.overleaf.com/project/66212da42d93d0485590c09c">paper draft</a>, the calculated bispectra are then run through the estimator as calculated by:
+            As stated in eq (26) of <a href="https://www.overleaf.com/project/66212da42d93d0485590c09c">paper draft</a>, 
+            the calculated bispectra are then run through the estimator as calculated by:
         </p>
         <p>
    \(
@@ -77,19 +79,23 @@
    \end{align}
    \)
   </p>
-<p>\(I\) and \(J\) are a pair of three multipole bins, \((i,j,k)\), \(b_I^{f_{\rm NL}=1}\) is the binned bispectrum obtained from the simulation with \(f^{\rm tens}_{\rm NL}=1\), and \(\rm{Cov}_{IJ}\) is the covariance matrix of the binned bispectrum estimated from the standard simulation (calculated from \(a_{lm}^{BICEP}\)). </p>
+<p>\(I\) and \(J\) are a pair of three multipole bins, \((i,j,k)\), \(b_I^{f_{\rm NL}=1}\) is the binned bispectrum obtained 
+    from the simulation with \(f^{\rm tens}_{\rm NL}=1\), and \(\rm{Cov}_{IJ}\) is the covariance matrix of the binned bispectrum estimated 
+    from the standard simulation (calculated from \(a_{lm}^{BICEP}\)). </p>
     </section>
 
     <section>
     <h2>Reproducing Toshiya's Original Results</h2>
-     We recalculate the \(f_{NL}\) used in the paper and previous postings by refactoring the existing estimator, then running it with the saved \(b_{ijk}\) files from <code>/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/</code>
+     We recalculate the \(f_{NL}\) used in the paper and previous postings by refactoring the existing estimator, 
+     then running it with the saved \(b_{ijk}\) files from <code>/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/</code>
 
         <figure>
             <img alt="Remade fNL histograms" id="fnl" src="#" width="750" height="500"
                 onerror="javascript:this.src='dne.png'" />
             <figcaption>
                
-                Recreating histograms in the Overleaf draft Fig. 1. We produce plots for all of the saved bispectrum files, including different multipole ranges, jackknife tests, and bin numbers.
+                Recreating histograms in the Overleaf draft Fig. 1. We produce plots for all of the saved bispectrum files, 
+                including different multipole ranges, jackknife tests, and bin numbers.
 
                 The parameters used in Fig. 1 correspond to bin num = 7, 8, 9, ell range = 20-350, full covariance matrices, and no jackknife. 
             </figcaption>
@@ -165,23 +171,36 @@
             </script>
         </figure>
         <p>
-We see that we are able to successfully recreate Toshiya's original histograms from his generated \(b_{ijk}\) files. These bispectrum files use \(a_{lm}^{BICEP}\), and thus contain no non-gaussianity. Accordingly, the histograms show \(f_{NL}\) to be consistent with zero with a spread around 800-900, which is better than the B-mode bispectrum constraint cited by <a href="https://arxiv.org/pdf/1905.05697">Planck's 2019 paper</a> (I wasn't able to find the specific constraint that corresponded to our case). </p>
+We see that we are able to successfully recreate Toshiya's original histograms from his generated \(b_{ijk}\) files. 
+These bispectrum files use \(a_{lm}^{BICEP}\), and thus contain no non-gaussianity. 
+Accordingly, the histograms show \(f_{NL}\) to be consistent with zero with a spread around 800-900, 
+which is better than the B-mode bispectrum constraint cited by <a href="https://arxiv.org/pdf/1905.05697">Planck's 2019 paper</a> 
+(I wasn't able to find the specific constraint that corresponded to our case). </p>
 </section>
 <section>
 <h2>Injecting Nongaussianity</h2>
-<p>The next step of the analysis is to inject non-gaussianity into the simulations and check whether the estimator is able to recover the injected values. Again, we have \(a^{tot}_{lm} = \sqrt{r}  a_{lm}^{G} + A\frac{f_{NL}^{tens}a_{lm}^{NG}}{r}\)
+<p>The next step of the analysis is to inject non-gaussianity into the simulations and check whether the estimator is able to recover the injected values. 
+    Again, we have \(a^{tot}_{lm} = \sqrt{r}  a_{lm}^{G} + A\frac{f_{NL}^{tens}a_{lm}^{NG}}{r}\)
 </p>
 <p>
-However, to account for dust and noise in the data, we let \(a^{tot}_{lm} = a^{BICEP}_{lm} + \sqrt{r}  a_{lm}^{G} + A\frac{f_{NL}^{tens}a_{lm}^{NG}}{r}\). We note that \(a^{BICEP}_{lm}\) does already contain the gaussian portions of the simulation, so that adding \(a_{lm}^{G}\) on top of the BICEP sims may double count the gaussian part. However, upon testing the estimator with \(f_{NL}=0\), we notice that the difference in the estimator's results are negligible when looking at \(a^{tot}_{lm} = a^{BICEP}_{lm} + \sqrt{r}  a_{lm}^{G}\) versus \(a^{tot}_{lm} = a^{BICEP}_{lm} \).
+However, to account for dust and noise in the data, we let \(a^{tot}_{lm} = a^{BICEP}_{lm} + \sqrt{r}  a_{lm}^{G} + A\frac{f_{NL}^{tens}a_{lm}^{NG}}{r}\). 
+We note that \(a^{BICEP}_{lm}\) does already contain the gaussian portions of the simulation, so that adding \(a_{lm}^{G}\) on top of the BICEP sims may 
+double count the gaussian part. However, upon testing the estimator with \(f_{NL}=0\), we notice that the difference in the estimator's results are 
+negligible when looking at \(a^{tot}_{lm} = a^{BICEP}_{lm} + \sqrt{r}  a_{lm}^{G}\) versus \(a^{tot}_{lm} = a^{BICEP}_{lm} \).
 </p>
 <p>
-The files are generated in fortran from <code>/n/home08/liuto/bk_analysis/cmbrectool/bispec/bispec_3d/main.f90</code>, where the \(f_{NL}\) and other parameters are defined in <code>params_b33y.ini</code>, run by <code>./exe params_b33y.ini</code>. The files are then saved in <code>/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/</code>.
+The files are generated in fortran from <code>/n/home08/liuto/bk_analysis/cmbrectool/bispec/bispec_3d/main.f90</code>, 
+where the \(f_{NL}\) and other parameters are defined in <code>params_b33y.ini</code>, run by <code>./exe params_b33y.ini</code>. 
+The files are then saved in <code>/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/</code>.
 </p>
         <figure>
             <img alt="Injected fNL histograms" id="inj" src="#" width="750" height="500"
                 onerror="javascript:this.src='dne.png'" />
             <figcaption>
-               New histograms with injected nongaussianity for different values of fNL. In our initial tests, we only consider bin num = 9 and test limited number of ell ranges. In the alm definition option, alm refers to \(a^{tot}_{lm}\), alm_bicep refers to \(a^{BICEP}_{lm} \), glm refers to \(\sqrt{r}  a_{lm}^{G}\), and flm refers to \( A \frac{a_{lm}^{NG}}{r}\).
+               New histograms with injected nongaussianity for different values of fNL. In our initial tests, 
+               we only consider bin num = 9 and test limited number of ell ranges. In the alm definition option, 
+               alm refers to \(a^{tot}_{lm}\), alm_bicep refers to \(a^{BICEP}_{lm} \), glm refers to \(\sqrt{r}  a_{lm}^{G}\), 
+               and flm refers to \( A \frac{a_{lm}^{NG}}{r}\).
 
                The second ell range is there to ensure that the issues are not specific to one ell range configuration.
 
@@ -249,7 +268,11 @@ The files are generated in fortran from <code>/n/home08/liuto/bk_analysis/cmbrec
                 );
             </script>
         </figure>
-      Examining the histograms, we see that for large injected values of \(f_{NL}\), the estimator is not able to accurately recover the parameter. Note that the red dashed line is the observed data, which stays the same for each injected \(f_{NL}\) configuration as we do not change the real \(a_{lm}\) data. There are also slight differences in values because the newly generated BBB files have a different <code>dbspace</code> restriction of 5 (meaning bispectrum is only calculated for bin combinations where their difference is is 5 or less.
+      Examining the histograms, we see that for large injected values of \(f_{NL}\), the estimator is not able to 
+      accurately recover the parameter. Note that the red dashed line is the observed data, which stays the same for each injected 
+      \(f_{NL}\) configuration as we do not change the real \(a_{lm}\) data. There are also slight differences in values because 
+      the newly generated BBB files have a different <code>dbspace</code> restriction of 5 (meaning bispectrum is only calculated 
+      for bin combinations where their difference is is 5 or less).
       
       
       Below is a table of the important values:
@@ -301,14 +324,28 @@ The files are generated in fortran from <code>/n/home08/liuto/bk_analysis/cmbrec
     </tr>
   </tbody>
 </table>      
-<p>We notice that for low injected \(f_{NL}\), noise and dust dominate the uncertainty. When we remove dust and noise by ignoring the \(a_{lm}^{BICEP}\) term, we see that \(f_{NL}\) is recovered without bias at low values of injected nongaussianity. However, as the injected \(f_{NL}\) increases, the estimator becomes inaccurate, often by several orders of magnitude. Comparing the case with and without noise and dust reveal that this inaccuracy is not caused by noise.</p>
+<p>We notice that for low injected \(f_{NL}\), noise and dust dominate the uncertainty. 
+    When we remove dust and noise by ignoring the \(a_{lm}^{BICEP}\) term, we see that \(f_{NL}\) is recovered without bias 
+    at low values of injected nongaussianity. However, as the injected \(f_{NL}\) increases, the estimator becomes inaccurate, 
+    often by several orders of magnitude. Comparing the case with and without noise and dust reveal that this inaccuracy is not caused by noise.</p>
     </section>
 
   <section>
   <h2>Future Directions</h2>
+   <p>
   We need to figure out why larger values of injected \(f_{NL}\) are not recovered, even within the same order of magnitude.
 
   We may need to revisit how the estimators and bispectrum are calculated, and examine the impact of higher order terms. 
+  </p>
+  <p>
+  Toshiya notes that our current method for calculating biases from the nonlinear terms (eg. \(f_{NL}^2\), \(f_{NL}^3\)) is not correct. 
+  The nonlinear term is further multiplied by \(1/r\), \(1/r^2\), etc, and we should update this method. 
+  For example, we could extract the nonlinear term alone from the total bispectrum to compute the bias from \(f_{NL}^3\) term.
+
+  Toshiya also notes that there is no bias from the \(f_{NL}^2\) term because 
+  \((g_{lm}+f_{NL}f_{lm})^3 = f_{NL}\langle g_{lm}^2 f_{lm}\rangle+f_{NL}^3 \langle f_{lm}^3\rangle\) 
+  (reminder that \(g_{lm}\) is the gaussian part of the \(a_{lm}\)'s, and  \(f_{lm}\) is the nongaussian part).
+</p>
   </section>
     <section>
         <h2>Appendix</h2>
