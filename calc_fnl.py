@@ -201,48 +201,63 @@ def run_amplitude_statistics(observed_bl, sim_bl, fiducial_bl, sim_cov_bls = Non
     return fnl_hists, fnl_obs
 
 def plot_fnl_hists(sim_fnl, obs_fnl, title_name, outpath, param_name="fNL"):
-
     """
-    Plots a histogram of simulated fNL values and a vertical line for the observed value.
-
-    Args:
-        sim_fnl (np.ndarray): An array of simulated fNL values.
-        obs_fnl (float): The single observed fNL value.
+    Plots a histogram of simulated values and handles gNL -> fNL conversion.
     """
     plt.figure(figsize=(10, 6))
+    
     sim_mean = np.mean(sim_fnl)
     sim_std = np.std(sim_fnl)
-    '''
-    if(sim_std > 10):
-        bin_range = 5000
-    else:
-        bin_range = 5
-    bin_width = bin_range/20
-    bins = np.arange(-bin_range, bin_range+bin_width, bin_width)
     
-    if(sim_std > 5000 or sim_std < 0.01):
-        bins = None
-    else:    
-        print('Clipping outliers for visualization')
-        sim_fnl = np.clip(sim_fnl, -bin_range,bin_range)
-    '''
-    bins=40
-    plt.hist(sim_fnl, bins=bins, density=False, alpha=0.6, color='skyblue', 
-             label=f'Simulated {param_name} ' + str(np.round(sim_mean,6)) + '+-' + str(np.round(sim_std,6)))
+    # Base label for the main histogram (gNL or fNL)
+    label_str = f'Simulated {param_name} {sim_mean:.2e} $\pm$ {sim_std:.2e}'
     
-    plt.axvline(obs_fnl, color='red', linestyle='dashed', linewidth=2, 
-                label=f'Observed {param_name} = '+ str(np.round(obs_fnl,6)))
+    # --- Calculate derived fNL if we are in gNL mode ---
+    if param_name == "gNL":
+        # Calculate cube root for every simulation
+        # np.cbrt handles negative inputs correctly
+        sim_f_derived = np.cbrt(sim_fnl)
+        obs_f_derived = np.cbrt(obs_fnl)
+        
+        f_mean = np.mean(sim_f_derived)
+        f_std = np.std(sim_f_derived)
+        
+        # Print to Console
+        print(f"\n--- Derived fNL Statistics (from {param_name}^(1/3)) ---")
+        print(f"Observed fNL: {obs_f_derived:.4f}")
+        print(f"Simulated fNL: {f_mean:.4f} +/- {f_std:.4f}")
+        print(f"---------------------------------------------------\n")
+        
+        # Append to the plot label
+        label_str += f'\n(Derived fNL: {f_mean:.1f} $\pm$ {f_std:.1f})'
+        
+        # Update title to indicate conversion
+        title_name += f" (Derived fNL $\\sim$ {f_mean:.0f})"
+    # -------------------------------------------------------------
+
+    # Histogram settings
+    bins = 40
+
+    plt.hist(sim_fnl, bins=bins, density=False, alpha=0.6, color='skyblue', label=label_str)
+    
+    # Plot the observed value
+    obs_label = f'Observed {param_name} = {obs_fnl:.2e}'
+    if param_name == "gNL":
+        obs_label += f'\n(Implied fNL = {np.cbrt(obs_fnl):.1f})'
+
+    plt.axvline(obs_fnl, color='red', linestyle='dashed', linewidth=2, label=obs_label)
     
     plt.xlabel(f'{param_name} Value')
     plt.ylabel('Count')
     plt.title(title_name)
-    plt.legend()
+    plt.legend(loc='upper right') # Ensure legend is visible
     plt.grid(axis='y', linestyle='--', alpha=0.7)
+    
     print('Saving: ' + str(outpath))
     plt.savefig(outpath)
-    # Display the plot
-
-    return 
+    plt.close() # Good practice to close figure to free memory
+    
+    return
 def save_amplitudes_to_file(filepath, fnl_sims_dict, fnl_obs_dict):
     hists_df = pd.DataFrame(fnl_sims_dict)
     hists_df.columns = ['diag_true', 'diag_false']
