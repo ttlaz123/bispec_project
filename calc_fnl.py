@@ -360,6 +360,7 @@ if __name__ == "__main__":
                     help = 'whether to overwrite the csv file')
     parser.add_argument('--fnl', default='', 
                     help='fnl value: 0001, 0010, 0100, 0032, 1000')
+    parser.add_argument('--gnl', action='store_true', help='Calculate gNL instead of fNL')
 
     
     args = parser.parse_args()
