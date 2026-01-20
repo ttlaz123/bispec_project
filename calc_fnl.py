@@ -301,7 +301,7 @@ def main(args):
             if(not args.covdata is None):
                     _, sim_cov_bls, _ = load_experiment_data(args.bk, freq, 
                                 args.bn, args.ell_range, args.simn, args.covdata, args.id, args.jackknife, 
-                                fiducial_data_path=args.covdata, fnl=args.fnl)
+                                fiducial_data_path=args.covdata, fnl='')
          
             else:
                 sim_cov_bls = None
