@@ -369,7 +369,7 @@ if __name__ == "__main__":
     elif(args.data == 'namikawa'):
         args.data = '/n/holylfs06/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/'
     if('liuto' in args.data):
-        args.outdir = 'fnl_figs_scaled2'    
+        args.outdir = 'gnl_figs'    
     elif('namikawa' in args.data):
         args.outdir = 'fnl_figs_test'
     if(args.covdata=='None'):
