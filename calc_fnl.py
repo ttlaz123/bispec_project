@@ -216,12 +216,9 @@ def plot_fnl_hists(sim_fnl, obs_fnl, title_name, outpath, param_name="fNL"):
     if param_name == "gNL":
         # Calculate cube root for every simulation
         # np.cbrt handles negative inputs correctly
-        sim_f_derived = np.cbrt(sim_fnl)
+        f_mean = np.cbrt(sim_mean)
+        f_std = np.cbrt(sim_std)
         obs_f_derived = np.cbrt(obs_fnl)
-        
-        f_mean = np.mean(sim_f_derived)
-        f_std = np.std(sim_f_derived)
-        
         # Print to Console
         print(f"\n--- Derived fNL Statistics (from {param_name}^(1/3)) ---")
         print(f"Observed fNL: {obs_f_derived:.4f}")
