@@ -56,7 +56,7 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,
             
         fiducial_bl_path = os.path.join(fiducial_data_path, f'{template_base}.dat')
 
-# Check if files exist
+        # Check if files exist
         if not os.path.exists(observed_bl_path):
             observed_bl_path = os.path.join(data_path, f'{tag.replace("_oL", "_dp1102_oL")}_0_fnl{fnl}.dat')
         if not os.path.exists(observed_bl_path):
@@ -296,11 +296,13 @@ def main(args):
             tag = f'{tag}_fnl{args.fnl}'
         amplitudes_file = os.path.join(outdir, tag + '.csv')
         if(not os.path.exists(amplitudes_file) or args.overwrite):
-            # Load and preprocess the data
+            # Load and preprocess the data for calculating covariance matrix
+            # do not need 
             if(not args.covdata is None):
-                observed_bl, sim_cov_bls, fiducial_bl = load_experiment_data(args.bk, freq, 
+                    _, sim_cov_bls, _ = load_experiment_data(args.bk, freq, 
                                 args.bn, args.ell_range, args.simn, args.covdata, args.id, args.jackknife, 
-                                fiducial_data_path=args.covdata, fnl=args.fnl, calc_gnl=args.gnl)
+                                fiducial_data_path=args.covdata, fnl=args.fnl)
+         
             else:
                 sim_cov_bls = None
             observed_bl, sims_bl, fiducial_bl = load_experiment_data(args.bk, freq, 
