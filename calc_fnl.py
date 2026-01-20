@@ -55,7 +55,6 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,
             template_base += '_cubic'
             
         fiducial_bl_path = os.path.join(fiducial_data_path, f'{template_base}.dat')
-        fiducial_bl_path = os.path.join(fiducial_data_path, f'{nojacktag.replace("b3d", "mb3d_fnle")}.dat')
 
 # Check if files exist
         if not os.path.exists(observed_bl_path):
@@ -73,6 +72,8 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,
         if(data_id == -1):
             data_id = observed_bl.shape[0]-1
         observed_bl = observed_bl[data_id, :]
+        print('Loading fiducial_bl:' + fiducial_bl_path)
+        fiducial_bl = np.loadtxt(fiducial_bl_path, unpack=True)
         print(f'Loading sim_bl from template: {sim_bl_template}')
         # Load simulated data with progress
         sim_bl_list = []
@@ -83,8 +84,7 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,
             txtfile = np.loadtxt(file_path)
             sim_bl_list.append(txtfile.T[data_id, :])
         sim_bl = np.array(sim_bl_list)
-        print('Loading fiducial_bl:' + fiducial_bl_path)
-        fiducial_bl = np.loadtxt(fiducial_bl_path, unpack=True)
+        
         
     else:
         print(f"Error: Unknown experiment type '{bk_type}'")
