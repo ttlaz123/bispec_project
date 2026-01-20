@@ -12,7 +12,7 @@ sys.path.insert(0, '/n/home02/toshiyan/Lib/cmblensplus/utils/')
 import analysis as ana
 
 
-def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,jackknife,fiducial_data_path = None, fnl=''):
+def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id, jackknife, fiducial_data_path=None, fnl='', calc_gnl=False):
     """
     Loads and preprocesses data for a given experiment configuration.
     
@@ -47,6 +47,14 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,
         nojacktag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm_{ell_range}_b{bn}'
         if(fiducial_data_path is None):
             fiducial_data_path = data_path
+
+        template_base = nojacktag.replace("b3d", "mb3d_fnle")
+        if calc_gnl:
+            # Appends _cubic to find the file generated in the Fortran step
+            # e.g., mb3d_fnle..._cubic.dat
+            template_base += '_cubic'
+            
+        fiducial_bl_path = os.path.join(fiducial_data_path, f'{template_base}.dat')
         fiducial_bl_path = os.path.join(fiducial_data_path, f'{nojacktag.replace("b3d", "mb3d_fnle")}.dat')
 
 # Check if files exist
@@ -192,7 +200,7 @@ def run_amplitude_statistics(observed_bl, sim_bl, fiducial_bl, sim_cov_bls = Non
         
     return fnl_hists, fnl_obs
 
-def plot_fnl_hists(sim_fnl, obs_fnl, title_name, outpath):
+def plot_fnl_hists(sim_fnl, obs_fnl, title_name, outpath, param_name="fNL"):
 
     """
     Plots a histogram of simulated fNL values and a vertical line for the observed value.
@@ -219,13 +227,13 @@ def plot_fnl_hists(sim_fnl, obs_fnl, title_name, outpath):
         sim_fnl = np.clip(sim_fnl, -bin_range,bin_range)
     '''
     bins=40
-    plt.hist(sim_fnl, bins=bins, density=False, alpha=0.6, color='skyblue', label='Simulated fNL ' + str(np.round(sim_mean,6)) + '+-' + str(np.round(sim_std,6)))
+    plt.hist(sim_fnl, bins=bins, density=False, alpha=0.6, color='skyblue', 
+             label=f'Simulated {param_name} ' + str(np.round(sim_mean,6)) + '+-' + str(np.round(sim_std,6)))
     
-    # Plot the observed fNL value as a vertical red line.
-    plt.axvline(obs_fnl, color='red', linestyle='dashed', linewidth=2, label='Observed fNL = '+ str(np.round(obs_fnl,6)))
+    plt.axvline(obs_fnl, color='red', linestyle='dashed', linewidth=2, 
+                label=f'Observed {param_name} = '+ str(np.round(obs_fnl,6)))
     
-    # Add labels, a title, and a legend to make the plot clear.
-    plt.xlabel('fNL Value')
+    plt.xlabel(f'{param_name} Value')
     plt.ylabel('Count')
     plt.title(title_name)
     plt.legend()
@@ -263,8 +271,15 @@ def main(args):
     outdir = args.outdir
     if(not os.path.exists(outdir)):
         os.mkdir(outdir)
+
+    # Set parameter name string for plots
+    param_label = "gNL" if args.gnl else "fNL"
     for freq in args.freqs:
         tag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm{args.jackknife}_dp1102_{args.ell_range}_b{args.bn}'
+        
+        # Modify tag so gNL results don't overwrite fNL results
+        if args.gnl:
+            tag += '_gnl'
         if(not args.fnl ==''):
             tag = f'{tag}_fnl{args.fnl}'
         amplitudes_file = os.path.join(outdir, tag + '.csv')
@@ -272,30 +287,34 @@ def main(args):
             # Load and preprocess the data
             if(not args.covdata is None):
                 observed_bl, sim_cov_bls, fiducial_bl = load_experiment_data(args.bk, freq, 
-                                                args.bn, args.ell_range, args.simn, args.covdata, args.id, args.jackknife, fiducial_data_path=args.covdata, fnl='0000')
+                                args.bn, args.ell_range, args.simn, args.covdata, args.id, args.jackknife, 
+                                fiducial_data_path=args.covdata, fnl=args.fnl, calc_gnl=args.gnl)
             else:
                 sim_cov_bls = None
             observed_bl, sims_bl, fiducial_bl = load_experiment_data(args.bk, freq, 
-                                                args.bn, args.ell_range, args.simn, args.data, args.id, args.jackknife, fnl=args.fnl)
+                                args.bn, args.ell_range, args.simn, args.data, args.id, args.jackknife, 
+                                fnl=args.fnl, calc_gnl=args.gnl)
             
             # Run the amplitude statistics calculation
-            print('Calculating amplitudes')
+            print(f'Calculating {param_label} amplitudes')
             fnl_hists, fnl_obs = run_amplitude_statistics(observed_bl, sims_bl, 
                                                             fiducial_bl, sim_cov_bls)
             
             save_amplitudes_to_file(amplitudes_file, fnl_hists, fnl_obs)
         else:
             fnl_hists, fnl_obs  = get_amplitudes_from_file(amplitudes_file)
-        print('Plotting Amplitudes')
+        print(f'Plotting {param_label} Amplitudes')
         for diag in [True, False]:
-            title_name = f'{freq}GHz lCDM ell {args.ell_range} with {args.bn} bins and Diag = {diag}' 
+            title_name = f'{freq}GHz lCDM ell {args.ell_range} with {args.bn} bins and Diag = {diag}'
             if(not args.jackknife ==''):
                 title_name = f'{title_name}, Jackknife={args.jackknife}'
             if(not args.fnl == ''):
                 title_name = f'{title_name}, injected fnl={args.fnl}'
             
             outpath = os.path.join(outdir, tag + '_diag' + str(diag) + '.png')
-            plot_fnl_hists(fnl_hists[diag], fnl_obs[diag], title_name, outpath)
+            
+            # Pass the param_name to plotting
+            plot_fnl_hists(fnl_hists[diag], fnl_obs[diag], title_name, outpath, param_name=param_label)
 
 def ensure_underscores(s):
     """
