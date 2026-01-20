@@ -331,10 +331,10 @@ if __name__ == "__main__":
     parser.add_argument('--jackknife', type=str, default='',
                             help='Jackknife type')
     parser.add_argument('--data', type=str, 
-                default='/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/', 
+                default='/n/holylfs06/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/', 
                 help='Base data directory.')
     parser.add_argument('--covdata', type=str, 
-                default='/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/', 
+                default='/n/holylfs06/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/', 
                 help='Base data directory for calculating covariance matrix.')
 
     parser.add_argument('-o', '--overwrite', action='store_true',
@@ -345,9 +345,9 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     if(args.data == 'liuto'):
-        args.data = '/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/'
+        args.data = '/n/holylfs06/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/'
     elif(args.data == 'namikawa'):
-        args.data = '/n/holylfs04/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/'
+        args.data = '/n/holylfs06/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/'
     if('liuto' in args.data):
         args.outdir = 'fnl_figs_scaled2'    
     elif('namikawa' in args.data):
@@ -356,7 +356,7 @@ if __name__ == "__main__":
         args.covdata = None
         args.outdir='fnl_figs_defcov'
     if(args.covdata == 'liuto'):
-        args.covdata = '/n/holylfs04/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/'
+        args.covdata = '/n/holylfs06/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/'
 
     for ellrange in ['oL20-350']:#,'oL30-350']:#, 'oL20-580']:#, 'oL30-350']:
         for bin_num in [9]:#,8,9]:#[7,8,9, 10, 11,16]:
