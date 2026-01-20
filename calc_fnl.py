@@ -375,6 +375,7 @@ if __name__ == "__main__":
     parser.add_argument('--fnl', default='', 
                     help='fnl value: 0001, 0010, 0100, 0032, 1000')
     parser.add_argument('--gnl', action='store_true', help='Calculate gNL instead of fNL')
+    parser.add_argument('--outdir', default=None)
 
     
     args = parser.parse_args()
@@ -382,9 +383,9 @@ if __name__ == "__main__":
         args.data = '/n/holylfs06/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/'
     elif(args.data == 'namikawa'):
         args.data = '/n/holylfs06/LABS/kovac_lab/users/namikawa/B33y/bispec_bbb/'
-    if('liuto' in args.data):
+    if('liuto' in args.data and args.outdir is None):
         args.outdir = 'gnl_figs'    
-    elif('namikawa' in args.data):
+    elif('namikawa' in args.data  and args.outdir is None):
         args.outdir = 'fnl_figs_test'
     if(args.covdata=='None'):
         args.covdata = None
