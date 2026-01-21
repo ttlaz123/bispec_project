@@ -390,7 +390,8 @@ if __name__ == "__main__":
         args.outdir = 'fnl_figs_test'
     if(args.covdata=='None'):
         args.covdata = None
-        args.outdir='fnl_figs_defcov'
+        if(args.outdir is None):
+            args.outdir='fnl_figs_defcov'
     if(args.covdata == 'liuto'):
         args.covdata = '/n/holylfs06/LABS/kovac_lab/users/liuto/B33y/bispec_bbb/'
 
