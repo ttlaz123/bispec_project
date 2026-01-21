@@ -250,7 +250,7 @@
             \label{eq:g-def-r}
         \end{equation}
         <p>We have the same case as the original linear case, except we have \(g\) instead of \(f\), and \(b^{(3)}_I\) contains the  \(\big\langle a^{NG}_1 a^{NG}_2 a^{NG}_3\big\rangle\) terms rather than the \(\big\langle a^G_1 a^G_2 a^{NG}_3\big\rangle\) terms.</p>
-        \begin{align}
+        \begin{equation}
             g_{\rm NL}^{\rm tens}
             =
             \sum_{I,J}
@@ -258,7 +258,7 @@
                 \mathrm{Cov}^{-1}_{IJ}\,
                 b_J^{(3)},
             \label{eq:est-fNL-final}
-        \end{align}
+        \end{equation}
         <p>To recover \(f_{NL}\), we have \(f=rg^{1/3}\).</p>
     </section>
 
@@ -319,12 +319,9 @@
                     ],
                 }, function (params) {
                     let dirbase = '/liuto/home/GitHub/bispec_project/';
-                    // Switch directory based on noise/nonoise selection
                     dirbase = dirbase + params.simtype + '/'
                     
                     // Filename construction
-                    // Note: Ensure your python script output matches this naming convention
-                    // Example: b3d_1var_nu100_lx0_nobl_lcdm_dp1102_oL20-350_b9_gnl_fnl0032_diagFalse.png
                     let filename = 'b3d_1var_nu' + params.nu + 
                                 '_lx0_nobl_lcdm' + 
                                 '_dp1102_oL' + params.oL + 
