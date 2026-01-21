@@ -29,7 +29,7 @@
     <section>
         <h2>Introduction</h2>
        <p><strong>Summary:</strong>
-        We recover the <strong>cubic</strong> non-Gaussian term (\(g_{NL} \propto f_{NL}^3\)).
+        We recover the cubic non-Gaussian term (\(g_{NL} \propto f_{NL}^3\)).
         Previous issues with recovering large \(f_{NL}\) were resolved by correctly isolating the cubic template.
         We now successfully recover the injected signal, though we observe that the uncertainty scales with the signal strength.
     </p>
@@ -46,12 +46,9 @@
         <p>
             While the simplest inflationary models predict that primordial fluctuations should be nearly Gaussian, 
             any deviations from this are captured by higher-order correlation functions like the bispectrum.
-            As outlined in <a href="https://www.overleaf.com/project/66212da42d93d0485590c09c">Toshiya's draft</a>, 
+            As discussed in the <a href="https://bicep.rc.fas.harvard.edu/bkcmb/analysis_logbook/analysis/20251016_bbb_bispec_revamp/">previous posting</a>,
             the full bispectrum expansion contains a linear term (\(f_{NL}\)) and a cubic term (\(f_{NL}^3\)).
             In the regime of large non-Gaussianity, the cubic term dominates:
-        </p>
-        <p>
-            \( b_I \approx \frac{f_{NL}^3}{r^3} b_I^{(3)} \)
         </p>
         <p>
             We define the auxiliary amplitude \( g_{NL} \equiv f_{NL}^3 / r^3 \). Our updated estimator targets this \(g_{NL}\) parameter directly 
@@ -74,11 +71,11 @@
         \end{align}
         <p>where \(a^G\) is a Gaussian realization and \(a^{NG}\) encodes the fixed 
         bispectrum shape of the (tensor) non-Gaussianity.  
-        The quantity \(f_{\rm NL}^{\rm tens}\) is the overall amplitude to be estimated.</p>
+        The parameter \(f_{\rm NL}^{\rm tens}\) is the overall amplitude we wish to find.</p>
 
-        <h3>Bispectrum of the total field</h3>
+        <h3>Bispectrum estimator for small fNL</h3>
 
-        <p>The theoretical (reduced, binned) bispectrum may be written schematically as</p>
+        <p>The theoretical (reduced, binned) bispectrum may be written as</p>
         \begin{align}
             B_I^{\rm theory}
             \;\propto\;
@@ -92,7 +89,7 @@
             \label{eq:B-schematic}
         \end{align}
         <p>where \(I\equiv(l_1,l_2,l_3)\) denotes a triple of multipole bins and
-        \(W_I\) the matrix from Eq. 15.</p>
+        \(W_I\) the matrix from Eq. 15 in the paper draft.</p>
 
         <p>Inserting Eq.~\eqref{eq:alm-def} from above into the cubic product gives</p>
         \begin{align}
@@ -270,7 +267,7 @@
     <section>
     <h2>Recovering the Cubic Term ($g_{NL}$)</h2>
     <p>
-        We updated the pipeline to generate a "cubic template" by computing the auto-bispectrum of the pure non-Gaussian simulation component.
+        We updated the pipeline to generate a cubic template by computing the auto-bispectrum of the pure non-Gaussian simulation component.
         We then injected signals with varying \(f_{NL}\) into simulations and attempted to recover the amplitude.
     </p>
     <p>
@@ -354,8 +351,8 @@
         Removing detector noise ("No Noise" plots) does not reduce this spread.
     </p>
     <p>
-        <strong>Interpretation:</strong> This scaling is driven by the <strong>Sample Variance</strong> (Cosmic Variance) of the non-Gaussian field itself. 
-        In this regime, the variance of the estimator is dominated by the stochastic fluctuations of the \(a^{NG}\) field rather than detector noise.
+        <strong>Interpretation:</strong> We currently believe this scaling is caused by the Cosmic Variance of the non-Gaussian field itself, 
+        that the variance of the estimator is dominated by the stochastic fluctuations of the \(a^{NG}\) field rather than any noise source.
         Since the signal is \(S \propto f_{NL}^3 a^{NG}\), the sample variance scales as \(f_{NL}^3\).
     </p>
     <p>
@@ -364,26 +361,22 @@
         \[
         \frac{\sigma_f}{f} \approx \frac{1}{3} \frac{\sigma_g}{g} \approx 0.5
         \]
-        This implies we are effectively seeing a \(2\sigma\) detection per realization, which is consistent with the cosmic variance limit.
+        There are also considerations regarding assuming linear noise contributions while the parameter we wish to estimate is cubic.
+        We may need to rethink whether this estimator can properly calculate the uncertainty for our cubic terms.
     </p>
 
     <h4>2. Noise-Dominated Regime (\(f_{NL} \lesssim 30\))</h4>
     <p>
         For smaller injected signals, the detector noise and Gaussian variance floor dominate. 
         In the \(f_{NL}\) (derived) histograms, this manifests as a bimodal distribution with peaks near \(\pm f_{NL}\).
-        This is a mathematical artifact of taking the cube root of a noisy variable centered near zero.
+        This is a mathematical artifact of taking the cube root of a noisy variable centered near zero, but it is curious that the positive and negative 
+        peaks are \(\pm f_{NL}\).
     </p>
     </section>
 
     <section>
     <h2>Future Directions</h2>
-    <p>
-     With the estimator validated for the cubic term, the next steps are:
-    </p>
-    <ul>
-        <li>Run the cubic estimator on the real BICEP data.</li>
-        <li>Finalize the text for the paper draft regarding the \(g_{NL}\) statistics.</li>
-    </ul>
+    <p></p>
     </section>
 
     <section>
