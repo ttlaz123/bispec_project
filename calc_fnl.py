@@ -168,6 +168,7 @@ def run_amplitude_statistics(observed_bl, sim_bl, fiducial_bl, sim_cov_bls = Non
             denom = np.matmul(np.matmul(avg_sim_bls, cov_mat_inv), avg_sim_bls)
 
         elif(sim_cov_bls is None):
+            print("No default covariance matrix, calculating from given sims...")
             cov_mat = compute_covariance_matrix(sim_amplitudes)
         else:
             cov_mat = compute_covariance_matrix(sim_cov_bls/fiducial_bl)
