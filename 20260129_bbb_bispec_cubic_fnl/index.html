@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Revisiting the BBB Bispectrum Project: Cubic Term Recovery</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+            TeX: { equationNumbers: { autoNumber: "AMS" } }
+        });
+    </script>
+    <script type="text/javascript" src="../mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+</head>
+
+<body>
+    <script type="text/javascript" src="scripts/pager.js"></script>
+    <link rel="stylesheet" type="text/css" href="scripts/pager.css">
+
+    <header>
+        <h1>Revisiting the BBB Bispectrum Project: Cubic Term Recovery</h1>
+        <time datetime="2026-01-21" class="published updated">2026 January 21</time> —
+        Tongtian (Tom) Liu
+    </header>
+
+    <hr>
+
+    <section>
+        <h2>Introduction</h2>
+        Paper page for current draft is here:
+        <a href="https://bicep.rc.fas.harvard.edu/~bicep2/papers/2025_bbb_bispec/">Constraint on non-Gaussianity of inflationary gravitational waves from B-mode bispectrum</a>
+       <p><strong>Summary:</strong>
+        We reproduce Toshiya's BBB bispectrum results to verify our estimator for the standard BK sims. 
+        We then extend the analysis to the <strong>cubic</strong> non-Gaussian term ($g_{NL} \propto f_{NL}^3$).
+        Previous issues with recovering large $f_{NL}$ were resolved by correctly isolating the cubic template.
+        We now successfully recover the injected signal, though we observe that the uncertainty scales with the signal strength, consistent with the cosmic variance limit.
+    </p>
+
+        <p>This posting builds upon previous updates:</p>
+        <ul>
+            <li><a href="../20160000_namikawa/20231117_bispec/">2023-11-17: Polarization Bispectrum Analysis</a></li>
+            <li><a href="../wip_nonGaussianity/">2022-07-18: Equilateral fNL from B18 95GHz Bispectrum</a></li>
+            <li><a href="../20160000_namikawa/20210520_bispec/">2021-05-20: Equilateral B-mode bispectrum analysis</a></li>
+        </ul>
+        <p>
+            While the simplest inflationary models predict that primordial fluctuations should be nearly Gaussian, 
+            any deviations from this is captured by higher-order correlation functions like the bispectrum.
+            As outlined in <a href="https://www.overleaf.com/project/66212da42d93d0485590c09c">Toshiya's draft</a>, 
+            the full bispectrum expansion contains a linear term ($f_{NL}$) and a cubic term ($f_{NL}^3$).
+            In the regime of large non-Gaussianity, the cubic term dominates:
+        </p>
+        <p>
+            \( b_I \approx \frac{f_{NL}^3}{r^3} b_I^{(3)} \)
+        </p>
+        <p>
+            We define the auxiliary amplitude \( g_{NL} \equiv f_{NL}^3 / r^3 \). Our updated estimator targets this \(g_{NL}\) parameter directly 
+            by using a template constructed from the auto-bispectrum of the non-Gaussian field (\(\langle a^{NG}a^{NG}a^{NG} \rangle\)).
+        </p>
+    </section>
+
+    <section>
+    <h2>Reproducing Linear Results</h2>
+     <p>
+      (See previous postings for the linear reconstruction checks. We confirmed the estimator works for the null case ($f_{NL}=0$) using Toshiya's original files).
+     </p>
+    </section>
+
+    <section>
+    <h2>Recovering the Cubic Term ($g_{NL}$)</h2>
+    <p>
+        We updated the pipeline to generate a "cubic template" by computing the auto-bispectrum of the pure non-Gaussian simulation component.
+        We then injected signals with varying \(f_{NL}\) into simulations and attempted to recover the amplitude.
+    </p>
+    <p>
+        The plots below show the recovered \(g_{NL}\) (and the derived \(f_{NL}\)) for different injected values.
+        We test two cases:
+        <ul>
+            <li><strong>With Noise:</strong> Standard BICEP noise + Dust included.</li>
+            <li><strong>No Noise:</strong> Pure signal simulations (\(a_{lm} = \sqrt{r} a^G + f_{NL} a^{NG}\)).</li>
+        </ul>
+    </p>
+
+        <figure>
+            <img alt="Recovered gNL histograms" id="gnl" src="#" width="900" height="600"
+                onerror="javascript:this.src='dne.png'" />
+            <figcaption>
+                Histograms of the recovered \(g_{NL}\) parameter (left) and the derived \(f_{NL}\) distribution (right).
+                Note that for the "No Noise" case, we simply remove the BICEP noise/dust realization from the input map.
+            </figcaption>
+
+            <script type="text/javascript">
+                pager.link("#gnl", {
+                    'Injected fNL|scaling':[
+                        'fNL = 10|0010',
+                        'fNL = 32|0032',
+                        'fNL = 100|0100',
+                        'fNL = 1000|1000',
+                    ],
+                    'Simulation Type|simtype': [
+                        'Standard (Noise+Dust)|gnl_figs',
+                        'No Noise (Signal Only)|gnl_figs_nonoise',
+                    ],
+                    'Bin Num|bn': [
+                        '9|9',
+                    ],
+                    'Ell Range|oL':[
+                        '20-350|20-350',
+                        '30-350|30-350',
+                    ],
+                    'Frequency|nu':[
+                        '100|100'
+                    ],
+                }, function (params) {
+                    let dirbase = '/liuto/home/GitHub/bispec_project/';
+                    // Switch directory based on noise/nonoise selection
+                    dirbase = dirbase + params.simtype + '/'
+                    
+                    // Filename construction
+                    // Note: Ensure your python script output matches this naming convention
+                    // Example: b3d_1var_nu100_lx0_nobl_lcdm_dp1102_oL20-350_b9_gnl_fnl0032_diagFalse.png
+                    let filename = 'b3d_1var_nu' + params.nu + 
+                                '_lx0_nobl_lcdm' + 
+                                '_dp1102_oL' + params.oL + 
+                                '_b' + params.bn + 
+                                '_gnl_fnl' + params.scaling +
+                                '_diagFalse'; 
+                                
+                    let filepath = dirbase + filename + '.png'
+                    console.log(filepath)
+                    return filepath;
+                });
+
+                pager.setparams({ 
+                    'bn': '9',
+                    'oL': '20-350',
+                    'simtype': 'gnl_figs',
+                    'nu': '100',
+                    'scaling':'1000',
+                });
+            </script>
+        </figure>
+
+    <h3>Discussion of Results</h3>
+    <p>
+        The results show that we can now accurately recover the central value of the injected \(f_{NL}\) across orders of magnitude 
+        (e.g., recovering \(10^9\) for input \(1000\), and \(10^6\) for input \(100\)).
+        However, we observe two distinct regimes of uncertainty:
+    </p>
+
+    <h4>1. Signal-Dominated Regime ($f_{NL} \gtrsim 100$)</h4>
+    <p>
+        For large injected signals, the spread of the estimator ($\sigma_g$) is not constant; rather, it scales with the signal strength 
+        ($\sigma_g \approx 1.5 \times \langle g \rangle$). 
+        Removing detector noise ("No Noise" plots) does not reduce this spread.
+    </p>
+    <p>
+        <strong>Interpretation:</strong> This scaling is driven by the <strong>Sample Variance</strong> (Cosmic Variance) of the non-Gaussian field itself. 
+        In this regime, the variance of the estimator is dominated by the stochastic fluctuations of the \(a^{NG}\) field rather than detector noise.
+        Since the signal is \(S \propto f_{NL}^3 a^{NG}\), the sample variance scales as \(f_{NL}^3\).
+    </p>
+    <p>
+        While a spread of \(\sigma_g \approx 1.5 \times \text{mean}\) appears large in \(g\)-space, the steep cubic relationship (\(g \propto f^3\)) 
+        means the relative error in \(f\)-space is suppressed by a factor of 3:
+        \[
+        \frac{\sigma_f}{f} \approx \frac{1}{3} \frac{\sigma_g}{g} \approx 0.5
+        \]
+        This implies we are effectively seeing a \(2\sigma\) detection per realization, which is consistent with the cosmic variance limit.
+    </p>
+
+    <h4>2. Noise-Dominated Regime ($f_{NL} \lesssim 30$)</h4>
+    <p>
+        For smaller injected signals, the detector noise and Gaussian variance floor dominate. 
+        In the \(f_{NL}\) (derived) histograms, this manifests as a bimodal distribution with peaks near \(\pm f_{NL}\).
+        This is a mathematical artifact of taking the cube root of a noisy variable centered near zero.
+    </p>
+    </section>
+
+    <section>
+    <h2>Future Directions</h2>
+    <p>
+     With the estimator validated for the cubic term, the next steps are:
+    </p>
+    <ul>
+        <li>Run the cubic estimator on the real BICEP data.</li>
+        <li>Finalize the text for the paper draft regarding the \(g_{NL}\) statistics.</li>
+    </ul>
+    </section>
+
+    <section>
+        <h2>Appendix</h2>
+        <p>Updated File Locations:</p>
+        <ul>
+            <li>Estimator Code: <code>/n/home08/liuto/GitHub/bispec_project</code></li> 
+            <li>Cubic Plots (With Noise): <code>.../bispec_project/gnl_figs/</code></li> 
+            <li>Cubic Plots (No Noise): <code>.../bispec_project/gnl_figs_nonoise/</code></li> 
+        </ul>
+    </section>
+</body>
+</html>
