@@ -342,17 +342,16 @@
     <p>
         The results show that we can now accurately recover the central value of the injected \(f_{NL}\) across orders of magnitude 
         (e.g., recovering \(10^9\) for input \(1000\), and \(10^6\) for input \(100\)).
-        However, we observe two distinct regimes of uncertainty:
     </p>
-
-    <h4>1. Signal-Dominated Regime (\(f_{NL} \gtrsim 100\))</h4>
     <p>
-        For large injected signals, the spread of the estimator (\(\sigma_g\)) is not constant; rather, it scales with the signal strength 
+        For large injected signals (\(f_{NL} \gtrsim 100\)), the spread of the estimator (\(\sigma_g\)) is not constant; rather, it scales with the signal strength 
         (\(\sigma_g \approx 1.5 \times \langle g \rangle\)). 
-        Removing detector noise ("No Noise" plots) does not reduce this spread.
+        Removing detector noise ("No Noise" plots) does not reduce this spread. 
+        For smaller injected signals, the uncertainty remains relatively constant due to observation noise and dust, and removing these effects 
+        dramatically decreases the uncertainty.
     </p>
     <p>
-        We believe this scaling could be caused by the variance of the limited field size itself, 
+        We believe this uncertainty scaling could be caused by the variance of the limited field size itself, 
         that the variance of the estimator is dominated by the fluctuations of the \(a^{NG}\) field rather than any noise source.
         Since the signal is \(S \propto f_{NL}^3 a^{NG}\), the sample variance scales as \(f_{NL}^3\). However, it could also be due to 
         inaccurate assumptions about how to model that uncertainty and propogating it through the derivation of the covariance matrix.
@@ -362,21 +361,14 @@
         However, in the high-signal regime, the variance contribution from the non-Gaussian realizations becomes significant.
     </p>
     <p>
-        While a spread of \(\sigma_g \approx 1.5 \times \text{mean}\) appears large in \(g\)-space, the steep cubic relationship (\(g \propto f^3\)) 
-        means the relative error in \(f\)-space is suppressed by a factor of 3:
-        \[
-        \frac{\sigma_f}{f} \approx \frac{1}{3} \frac{\sigma_g}{g} \approx 0.5
-        \]
-        There are also considerations regarding assuming linear noise contributions while the parameter we wish to estimate is cubic.
-        We may need to rethink whether this estimator can properly calculate the uncertainty for our cubic terms.
-    </p>
-
-    <h4>2. Noise-Dominated Regime (\(f_{NL} \lesssim 30\))</h4>
-    <p>
-        For smaller injected signals, the detector noise and Gaussian variance floor dominate. 
-        In the \(f_{NL}\) (derived) histograms, this manifests as a bimodal distribution with peaks near \(\pm f_{NL}\).
+        In the \(f_{NL}\) (derived) histograms, we see a bimodal distribution with peaks near \(\pm f_{NL}\).
         This is a mathematical artifact of taking the cube root of a noisy variable centered near zero, but it is curious that the positive and negative 
         peaks are \(\pm f_{NL}\).
+        
+    </p>
+    <p>
+        
+        
     </p>
     </section>
 
