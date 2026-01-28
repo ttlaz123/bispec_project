@@ -234,14 +234,15 @@
 
         <h3>Estimator when only the \(f^3\) term is present</h3>
 
-        <p>Assuming that \(f\) is large, we can ignore the linear term so the data follows</p>
+        <p>Assuming that \(f\) is large, we can ignore the linear term so the data follows:</p>
         \begin{equation}
             b_I = \frac{f^3}{r^3}\, b_I^{(3)} + n_I,
             \qquad \langle n_I\rangle = 0,\qquad \mathrm{Cov}_{IJ}=\langle n_I n_J\rangle.
             \label{eq:only-cubic-r}
         \end{equation}
 
-        <p>Define the auxiliary (linear) amplitude</p>
+        <p>Here, we assume the noise and covariance matrix can be constructed the same as the linear case, but these assumptions may need to be revisited.
+            Define the auxiliary (linear) amplitude</p>
         \begin{equation}
             g \equiv \frac{f^3}{r^3} \quad\Longrightarrow\quad b_I = g\, b_I^{(3)} + n_I.
             \label{eq:g-def-r}
@@ -351,9 +352,14 @@
         Removing detector noise ("No Noise" plots) does not reduce this spread.
     </p>
     <p>
-        <strong>Interpretation:</strong> We currently believe this scaling is caused by the Cosmic Variance of the non-Gaussian field itself, 
-        that the variance of the estimator is dominated by the stochastic fluctuations of the \(a^{NG}\) field rather than any noise source.
-        Since the signal is \(S \propto f_{NL}^3 a^{NG}\), the sample variance scales as \(f_{NL}^3\).
+        We believe this scaling could be caused by the variance of the limited field size itself, 
+        that the variance of the estimator is dominated by the fluctuations of the \(a^{NG}\) field rather than any noise source.
+        Since the signal is \(S \propto f_{NL}^3 a^{NG}\), the sample variance scales as \(f_{NL}^3\). However, it could also be due to 
+        inaccurate assumptions about how to model that uncertainty and propogating it through the derivation of the covariance matrix.
+        Our current estimator utilizes a covariance matrix derived under the null hypothesis ((f_{\rm NL}=0)). 
+        This approximation assumes that the covariance is independent of the parameter value and dominated by Gaussian terms 
+        ((\langle a^G a^G a^G \rangle \sim 0)). 
+        However, in the high-signal regime, the variance contribution from the non-Gaussian realizations becomes significant.
     </p>
     <p>
         While a spread of \(\sigma_g \approx 1.5 \times \text{mean}\) appears large in \(g\)-space, the steep cubic relationship (\(g \propto f^3\)) 
@@ -376,7 +382,14 @@
 
     <section>
     <h2>Future Directions</h2>
-    <p></p>
+   <p> We should revisit the derivation of the estimator covariance matrix. 
+    The current weighting scheme assumes linear noise (fixed covariance based on Gaussian fields), 
+    whereas the actual variance depends on the cubic signal strength. 
+    To accurately capture the uncertainties in the high-signal regime, 
+    we should re-derive the covariance matrix to include signal-dependent terms. 
+    Additionally, Toshiya has suggested investigating the impact of varying the tensor-to-scalar ratio (r) on signal recovery.
+    He has also suggested constraining (f_{\rm NL}) directly using the (BB) power spectrum, as the non-Gaussian field also sources power at the 2-point level,
+    although he noted that may be outside the scope of the current project.
     </section>
 
     <section>
