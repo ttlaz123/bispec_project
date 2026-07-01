@@ -1,3 +1,4 @@
+print('Importing directories')
 import argparse
 import os
 import sys
@@ -9,13 +10,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 
-# Local projects
-sys.path.insert(0, '/n/home02/toshiyan/Lib/cmblensplus/utils/')
-# NOTE: 'analysis' (ana) is currently unused in this script; left imported
-# in case downstream helpers are added, but safe to remove if unneeded.
-import analysis as ana
-
-
+print('Done importing')
 BASE_USERS = {
     'liuto': '/n/holylfs06/LABS/kovac_lab/users/liuto/B33y/',
     'namikawa': '/n/holylfs06/LABS/kovac_lab/users/namikawa/B33y/',
