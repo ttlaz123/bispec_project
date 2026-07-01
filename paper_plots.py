@@ -331,6 +331,62 @@ def run_one_config(args, freq, bn, ell_range, jackknife):
 
         outpath = os.path.join(args.outdir, f'{tag}_diag{diag}.pdf')
         plot_fnl_hists(fnl_hists[diag], injected_value, title_name, outpath, param_name=param_label)
+def plot_fnl_hist_with_planck(sim_fnl, injected_value, title_name, outpath,
+                                planck_central, planck_sigma, param_name="fNL"):
+    """
+    Same histogram + Gaussian-fit style as plot_fnl_hists, with an additional
+    Gaussian curve overlaid representing an external constraint (e.g. Planck)
+    for direct visual comparison against the simulated recovery distribution.
+    """
+    plt.rcParams.update({'font.size': 12, 'axes.titlesize': 13,
+                          'axes.titleweight': 'bold', 'figure.facecolor': 'white'})
+
+    data = np.asarray(sim_fnl)
+    fig, ax = plt.subplots(figsize=(9, 6))
+
+    fit_mu, fit_sigma = norm.fit(data)
+
+    n_bins = 40
+    counts, bin_edges, _ = ax.hist(
+        data, bins=n_bins, alpha=0.65, color='#6BAED6', edgecolor='white', linewidth=0.5,
+        label=f'Simulated {param_name}\n{fit_mu:.2e} $\\pm$ {fit_sigma:.2e}'
+    )
+    bin_width = bin_edges[1] - bin_edges[0]
+
+    # Simulated recovery: Gaussian fit, scaled to histogram counts
+    x_smooth = np.linspace(bin_edges[0], bin_edges[-1], 400)
+    ax.plot(x_smooth, norm.pdf(x_smooth, fit_mu, fit_sigma) * len(data) * bin_width,
+            color='#08519C', linewidth=2, label='Simulated Gaussian fit')
+
+    # Planck constraint: same visual language, different color, own curve
+    # (scaled the same way -- count-equivalent height -- for a fair visual
+    # comparison of width/shape, not literal probability density).
+    x_planck = np.linspace(
+        min(x_smooth.min(), planck_central - 4 * planck_sigma),
+        max(x_smooth.max(), planck_central + 4 * planck_sigma),
+        400
+    )
+    ax.plot(x_planck, norm.pdf(x_planck, planck_central, planck_sigma) * len(data) * bin_width,
+            color='#E6550D', linewidth=2, linestyle='-',
+            label=f'Planck constraint\n{planck_central} $\\pm$ {planck_sigma}')
+    ax.axvline(planck_central, color='#E6550D', linestyle='--', linewidth=1.2, alpha=0.7)
+
+    if injected_value is not None:
+        ax.axvline(injected_value, color='#CB181D', linestyle='--', linewidth=2,
+                   label=f'Injected {param_name} = {injected_value:.2e}')
+
+    ax.set_xlabel(f'{param_name} Value')
+    ax.set_ylabel('Count')
+    ax.set_title(title_name)
+    ax.legend(loc='upper right', fontsize=9, framealpha=0.9)
+    ax.grid(axis='y', linestyle='--', alpha=0.4)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    print('Saving: ' + str(outpath))
+    plt.tight_layout()
+    plt.savefig(outpath, dpi=150)
+    plt.close()
 # ---------------------------------------------------------------------------
 # Full scan mode
 # ---------------------------------------------------------------------------
@@ -396,11 +452,20 @@ def run_scan(args, freq, bn, ell_range, jackknife, center_on_injected=False):
 
                     tag = (f'b3d_1var_nu{freq}_lx0_nobl_lcdm{jackknife}_{ell_range}_b{bn}'
                            f'_{noise}noise{"_gnl" if gnl else ""}_fnl{fnl}')
-                    outpath = os.path.join(args.outdir, f'{tag}_diag{diag}.pdf')
+                    outpath = os.path.join(args.outdir, f'{tag}_diag{diag}')
                     title_name = (f'{freq}GHz lCDM ell {ell_range}, {bn} bins, diag={diag}, '
                                   f'noise={noise}, injected fnl={fnl}')
-                    plot_fnl_hists(data, injected_value, title_name, outpath,
-                                    param_name='gNL' if gnl else 'fNL')
+                    plot_fnl_hist_with_planck(
+                        sim_fnl=fnl_hists[False],          # linear, with-noise sim results for a chosen injected fnl
+                        injected_value=injected_value,
+                        title_name='100GHz lCDM, linear estimator, with noise, vs. Planck constraint',
+                        outpath=outpath + '_vs_planck_hist.pdf',
+                        planck_central=1100,
+                        planck_sigma=1400,
+                        param_name='fNL'
+                    )
+                    #plot_fnl_hists(data, injected_value, title_name, outpath + '.pdf',
+                    #                param_name='gNL' if gnl else 'fNL')
 
     return pd.DataFrame(results)
 
