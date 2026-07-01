@@ -327,9 +327,9 @@ def build_parser():
     p.add_argument('--bk', type=str, default='B33y', help='Experiment type.')
     p.add_argument('--id', type=int, default=-1, help='Row index for data extraction (-1 = last row).')
     p.add_argument('--freqs', nargs='+', default=['100'], help='Frequencies to analyze.')
-    p.add_argument('--simn', type=int, default=500,
+    p.add_argument('--simn', type=int, default=499,
                    help='Number of simulations to load (indices 0..simn-1). '
-                        'Use 500 for the full bispec sim set (0-499).')
+                        'Use 499 for the full bispec sim set (0-499).')
 
     p.add_argument('--ell_ranges', nargs='+', default=['oL20-350'], help='ell_range tag(s) to sweep.')
     p.add_argument('--bins', nargs='+', type=int, default=[9], help='Bin count(s) to sweep.')
