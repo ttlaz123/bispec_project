@@ -329,7 +329,7 @@ def run_one_config(args, freq, bn, ell_range, jackknife):
             title_bits.append(f'injected fnl={args.fnl}')
         title_name = ', '.join(title_bits)
 
-        outpath = os.path.join(args.outdir, f'{tag}_diag{diag}.png')
+        outpath = os.path.join(args.outdir, f'{tag}_diag{diag}.pdf')
         plot_fnl_hists(fnl_hists[diag], injected_value, title_name, outpath, param_name=param_label)
 # ---------------------------------------------------------------------------
 # Full scan mode
@@ -396,7 +396,7 @@ def run_scan(args, freq, bn, ell_range, jackknife, center_on_injected=False):
 
                     tag = (f'b3d_1var_nu{freq}_lx0_nobl_lcdm{jackknife}_{ell_range}_b{bn}'
                            f'_{noise}noise{"_gnl" if gnl else ""}_fnl{fnl}')
-                    outpath = os.path.join(args.outdir, f'{tag}_diag{diag}.png')
+                    outpath = os.path.join(args.outdir, f'{tag}_diag{diag}.pdf')
                     title_name = (f'{freq}GHz lCDM ell {ell_range}, {bn} bins, diag={diag}, '
                                   f'noise={noise}, injected fnl={fnl}')
                     plot_fnl_hists(data, injected_value, title_name, outpath,
