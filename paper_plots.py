@@ -208,7 +208,6 @@ def parse_injected_value(fnl_str, is_gnl):
 # ---------------------------------------------------------------------------
 # Plotting
 # ---------------------------------------------------------------------------
-
 def _plot_single_panel(ax, data, injected_value, xlabel, hist_color, fit_color,
                         line_color, param_name, center_on_injected=False):
     data = np.asarray(data)
@@ -216,7 +215,8 @@ def _plot_single_panel(ax, data, injected_value, xlabel, hist_color, fit_color,
     if center_on_injected and injected_value is not None:
         data = data - injected_value
         plotted_injected = 0.0
-        xlabel = f'{xlabel} $-$ Injected'
+        # xlabel intentionally left unchanged (still just "fNL"/"gNL"),
+        # per request — the shift is implicit in the plot, not the label.
     else:
         plotted_injected = injected_value
 
@@ -250,14 +250,13 @@ def _plot_single_panel(ax, data, injected_value, xlabel, hist_color, fit_color,
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-
 def plot_fnl_hists(sim_fnl, injected_value, title_name, outpath, param_name="fNL",
                     center_on_injected=False):
     plt.rcParams.update({'font.size': 12, 'axes.titlesize': 13,
                           'axes.titleweight': 'bold', 'figure.facecolor': 'white'})
 
     fig, ax1 = plt.subplots(1, 1, figsize=(9, 6))
-    _plot_single_panel(ax1, sim_fnl, injected_value, f'{param_name} Value',
+    _plot_single_panel(ax1, sim_fnl, injected_value, param_name,   # <- plain label
                         '#6BAED6', '#08519C', '#CB181D', param_name,
                         center_on_injected=center_on_injected)
     ax1.set_title(title_name)
@@ -266,7 +265,6 @@ def plot_fnl_hists(sim_fnl, injected_value, title_name, outpath, param_name="fNL
     plt.tight_layout()
     plt.savefig(outpath, dpi=150)
     plt.close()
-
 # ---------------------------------------------------------------------------
 # Cache I/O
 # ---------------------------------------------------------------------------
