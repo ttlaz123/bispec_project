@@ -338,7 +338,7 @@ def run_one_config(args, freq, bn, ell_range, jackknife):
 ALL_FNL_VALUES = ['0000', '0001', '0010', '0032', '0100', '1000']
 
 
-def run_scan(args, freq, bn, ell_range, jackknife, center_on_injected=True):
+def run_scan(args, freq, bn, ell_range, jackknife, center_on_injected=False):
     results = []
 
     for gnl in [False, True]:
@@ -400,8 +400,7 @@ def run_scan(args, freq, bn, ell_range, jackknife, center_on_injected=True):
                     title_name = (f'{freq}GHz lCDM ell {ell_range}, {bn} bins, diag={diag}, '
                                   f'noise={noise}, injected fnl={fnl}')
                     plot_fnl_hists(data, injected_value, title_name, outpath,
-                                    param_name='gNL' if gnl else 'fNL',
-                                    center_on_injected=center_on_injected)
+                                    param_name='gNL' if gnl else 'fNL')
 
     return pd.DataFrame(results)
 
