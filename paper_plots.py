@@ -137,6 +137,26 @@ def compute_covariance_matrix(sim_amplitudes):
     return cov
 
 
+def compute_summary_stats(data, injected_value=None):
+    """Gaussian fit + percentile-based stats, plus bias relative to the
+    injected value when available. For skewed distributions (notably
+    gNL = fNL^3), the median/percentile stats are the honest summary;
+    the Gaussian fit is kept for comparison but is a poor description
+    of gNL's shape."""
+    fit_mu, fit_sigma = norm.fit(data)
+    median = np.median(data)
+    p16, p84 = np.percentile(data, [16, 84])
+    stats = {
+        'fit_mu': fit_mu, 'fit_sigma': fit_sigma,
+        'median': median, 'p16': p16, 'p84': p84,
+        'lower_1sigma_eq': median - p16, 'upper_1sigma_eq': p84 - median,
+    }
+    if injected_value is not None:
+        stats['bias_mu'] = fit_mu - injected_value
+        stats['bias_median'] = median - injected_value
+    return stats
+
+
 def calc_single_amplitude(relative_amplitude, covmat, diag):
     if diag:
         covmat = np.diag(np.diag(covmat))
@@ -146,30 +166,32 @@ def calc_single_amplitude(relative_amplitude, covmat, diag):
     return np.sum(col_sums * relative_amplitude) / total_sum
 
 
-def run_amplitude_statistics(sim_bl, fiducial_bl, sim_cov_bls=None):
-    """Simulation-only amplitude recovery for both diagonal and full covariance."""
+def run_amplitude_statistics(sim_bl, fiducial_bl, fixed_cov_amplitudes=None):
+    """
+    Simulation-only amplitude recovery for both diagonal and full covariance.
+
+    fixed_cov_amplitudes:
+        - None: self-referential leave-one-out covariance is used (correct
+          ONLY when sim_bl is itself the null/fnl=0000 set, to avoid a sim
+          contributing to the covariance used to evaluate itself).
+        - an (Nbin x Nbin) amplitude covariance matrix: used as-is for every
+          sim. This is the normal case for any fnl != 0000, where the
+          covariance comes from the independent null sims and there's no
+          self-referencing to guard against.
+    """
     fnl_hists = {}
     num_sims = sim_bl.shape[0]
+    sim_amplitudes = sim_bl / fiducial_bl
 
     for diag in [True, False]:
-        sim_amplitudes = sim_bl / fiducial_bl
-
-        if sim_cov_bls is None:
-            print("No external covariance sims given; computing from analysis sims...")
-            cov_mat = compute_covariance_matrix(sim_amplitudes)
-        else:
-            cov_mat = compute_covariance_matrix(sim_cov_bls / fiducial_bl)
-        if diag:
-            cov_mat = np.diag(np.diag(cov_mat))
-
         sim_amplitudes_hist = []
         for i in range(num_sims):
-            if sim_cov_bls is None:
-                leave_one_out_cov = np.cov(np.delete(sim_amplitudes, i, 0), rowvar=0)
+            if fixed_cov_amplitudes is None:
+                cov_mat = np.cov(np.delete(sim_amplitudes, i, 0), rowvar=0)
             else:
-                leave_one_out_cov = cov_mat
+                cov_mat = fixed_cov_amplitudes
             sim_amplitudes_hist.append(
-                calc_single_amplitude(sim_amplitudes[i], leave_one_out_cov, diag)
+                calc_single_amplitude(sim_amplitudes[i], cov_mat, diag)
             )
         fnl_hists[diag] = sim_amplitudes_hist
 
@@ -177,7 +199,6 @@ def run_amplitude_statistics(sim_bl, fiducial_bl, sim_cov_bls=None):
 
 
 def parse_injected_value(fnl_str, is_gnl):
-    """Numeric injected value for the reference line. gNL = fNL^3 (r=1 only)."""
     if fnl_str == '':
         return None
     injected_fnl = float(fnl_str)
@@ -188,63 +209,63 @@ def parse_injected_value(fnl_str, is_gnl):
 # Plotting
 # ---------------------------------------------------------------------------
 
-def _plot_single_panel(ax, data, injected_value, xlabel, hist_color, fit_color, line_color, param_name):
+def _plot_single_panel(ax, data, injected_value, xlabel, hist_color, fit_color,
+                        line_color, param_name, center_on_injected=False):
     data = np.asarray(data)
-    sim_mean, sim_std = np.mean(data), np.std(data)
+
+    if center_on_injected and injected_value is not None:
+        data = data - injected_value
+        plotted_injected = 0.0
+        xlabel = f'{xlabel} $-$ Injected'
+    else:
+        plotted_injected = injected_value
+
+    fit_mu, fit_sigma = norm.fit(data)
+    median = np.median(data)
+    p16, p84 = np.percentile(data, [16, 84])
 
     n_bins = 40
     counts, bin_edges, _ = ax.hist(
         data, bins=n_bins, alpha=0.65, color=hist_color, edgecolor='white', linewidth=0.5,
-        label=f'Simulated {param_name}\n{sim_mean:.2e} $\\pm$ {sim_std:.2e}'
+        label=f'Simulated {param_name}\nGaussian: {fit_mu:.2e} $\\pm$ {fit_sigma:.2e}\n'
+              f'Median: {median:.2e} [{p16:.2e}, {p84:.2e}]'
     )
 
-    fit_mu, fit_sigma = norm.fit(data)
     bin_width = bin_edges[1] - bin_edges[0]
     x_smooth = np.linspace(bin_edges[0], bin_edges[-1], 400)
-    ax.plot(
-        x_smooth, norm.pdf(x_smooth, fit_mu, fit_sigma) * len(data) * bin_width,
-        color=fit_color, linewidth=2,
-        label=f'Gaussian fit\n$\\mu$={fit_mu:.2e}, $\\sigma$={fit_sigma:.2e}'
-    )
+    ax.plot(x_smooth, norm.pdf(x_smooth, fit_mu, fit_sigma) * len(data) * bin_width,
+            color=fit_color, linewidth=2, label='Gaussian fit')
 
-    if injected_value is not None:
-        ax.axvline(injected_value, color=line_color, linestyle='--', linewidth=2,
-                   label=f'Injected {param_name} = {injected_value:.2e}')
+    ax.axvline(median, color=fit_color, linestyle=':', linewidth=1.5, label='Median')
+    ax.axvspan(p16, p84, color=fit_color, alpha=0.12, label='16th-84th percentile')
+
+    if plotted_injected is not None:
+        ax.axvline(plotted_injected, color=line_color, linestyle='--', linewidth=2,
+                   label=f'Injected {param_name} = {plotted_injected:.2e}')
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel('Count')
-    ax.legend(loc='upper right', fontsize=9, framealpha=0.9)
+    ax.legend(loc='upper right', fontsize=8, framealpha=0.9)
     ax.grid(axis='y', linestyle='--', alpha=0.4)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
 
-def plot_fnl_hists(sim_fnl, injected_value, title_name, outpath, param_name="fNL"):
+def plot_fnl_hists(sim_fnl, injected_value, title_name, outpath, param_name="fNL",
+                    center_on_injected=False):
     plt.rcParams.update({'font.size': 12, 'axes.titlesize': 13,
                           'axes.titleweight': 'bold', 'figure.facecolor': 'white'})
 
-    if param_name == "gNL":
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-    else:
-        fig, ax1 = plt.subplots(1, 1, figsize=(9, 6))
-        ax2 = None
-
+    fig, ax1 = plt.subplots(1, 1, figsize=(9, 6))
     _plot_single_panel(ax1, sim_fnl, injected_value, f'{param_name} Value',
-                        '#6BAED6', '#08519C', '#CB181D', param_name)
+                        '#6BAED6', '#08519C', '#CB181D', param_name,
+                        center_on_injected=center_on_injected)
     ax1.set_title(title_name)
-
-    if ax2 is not None:
-        sim_f_derived = np.cbrt(sim_fnl)
-        derived_injected = np.cbrt(injected_value) if injected_value is not None else None
-        _plot_single_panel(ax2, sim_f_derived, derived_injected, r'Derived fNL ($g_{NL}^{1/3}$)',
-                            '#FC9272', '#A50F15', '#67000D', 'Derived fNL')
-        ax2.set_title('Derived fNL Distribution')
 
     print('Saving: ' + str(outpath))
     plt.tight_layout()
     plt.savefig(outpath, dpi=150)
     plt.close()
-
 
 # ---------------------------------------------------------------------------
 # Cache I/O
@@ -317,49 +338,45 @@ def run_one_config(args, freq, bn, ell_range, jackknife):
         outpath = os.path.join(args.outdir, f'{tag}_diag{diag}.png')
         plot_fnl_hists(fnl_hists[diag], injected_value, title_name, outpath, param_name=param_label)
 # ---------------------------------------------------------------------------
-# Full scan mode: cubic vs linear × noise vs no-noise × all fnl values
+# Full scan mode
 # ---------------------------------------------------------------------------
 
 ALL_FNL_VALUES = ['0000', '0001', '0010', '0032', '0100', '1000']
 
 
-def run_scan(args, freq, bn, ell_range, jackknife):
+def run_scan(args, freq, bn, ell_range, jackknife, center_on_injected=True):
     results = []
 
     for gnl in [False, True]:
         estimator_label = 'cubic' if gnl else 'linear'
         for noise in ['with', 'without']:
             data_path = resolve_path('liuto', noise)
-            covdata_path = None if args.covdata is None else resolve_path(args.covdata, noise)
+
+            print(f"\n  Computing reference (null) covariance for "
+                  f"estimator={estimator_label} noise={noise}...")
+            null_sims_bl, null_fiducial_bl = load_experiment_data(
+                args.bk, freq, bn, ell_range, args.simn, data_path,
+                args.id, jackknife, fnl='0000', calc_gnl=gnl)
+            null_amplitudes = null_sims_bl / null_fiducial_bl
+            reference_cov = compute_covariance_matrix(null_amplitudes)
 
             for fnl in ALL_FNL_VALUES:
                 injected_value = parse_injected_value(fnl, gnl)
                 label = f'estimator={estimator_label} noise={noise} fnl={fnl}'
 
-                ok = preflight_check(args.bk, freq, bn, ell_range, jackknife,
-                                      data_path, covdata_path, fnl, gnl, label=label)
-                if not ok:
-                    print(f'  [skip] {label}: preflight failed, see above')
-                    for diag in [True, False]:
-                        results.append({
-                            'estimator': estimator_label, 'noise': noise, 'injected_fnl': fnl,
-                            'diag': diag, 'injected_value': injected_value,
-                            'fit_mu': None, 'fit_sigma': None, 'n_sims': None, 'status': 'missing_files',
-                        })
-                    continue
-
                 try:
-                    sim_cov_bls = None
-                    if covdata_path is not None:
-                        sim_cov_bls, _ = load_experiment_data(
-                            args.bk, freq, bn, ell_range, args.simn, covdata_path,
-                            args.id, jackknife, fiducial_data_path=covdata_path, fnl='0000')
-
-                    sims_bl, fiducial_bl = load_experiment_data(
-                        args.bk, freq, bn, ell_range, args.simn, data_path,
-                        args.id, jackknife, fnl=fnl, calc_gnl=gnl)
-
-                    fnl_hists = run_amplitude_statistics(sims_bl, fiducial_bl, sim_cov_bls)
+                    if fnl == '0000':
+                        # Same sims as the reference-covariance set: use
+                        # leave-one-out to avoid self-referential leakage.
+                        sims_bl, fiducial_bl = null_sims_bl, null_fiducial_bl
+                        fnl_hists = run_amplitude_statistics(
+                            sims_bl, fiducial_bl, fixed_cov_amplitudes=None)
+                    else:
+                        sims_bl, fiducial_bl = load_experiment_data(
+                            args.bk, freq, bn, ell_range, args.simn, data_path,
+                            args.id, jackknife, fnl=fnl, calc_gnl=gnl)
+                        fnl_hists = run_amplitude_statistics(
+                            sims_bl, fiducial_bl, fixed_cov_amplitudes=reference_cov)
 
                 except FileNotFoundError as e:
                     print(f'  [skip] {label}: {e}')
@@ -367,20 +384,21 @@ def run_scan(args, freq, bn, ell_range, jackknife):
                         results.append({
                             'estimator': estimator_label, 'noise': noise, 'injected_fnl': fnl,
                             'diag': diag, 'injected_value': injected_value,
-                            'fit_mu': None, 'fit_sigma': None, 'n_sims': None, 'status': 'missing_files',
+                            'status': 'missing_files',
                         })
                     continue
 
                 for diag in [True, False]:
                     data = np.asarray(fnl_hists[diag])
-                    fit_mu, fit_sigma = norm.fit(data)
+                    stats = compute_summary_stats(data, injected_value=injected_value)
                     results.append({
                         'estimator': estimator_label, 'noise': noise, 'injected_fnl': fnl,
                         'diag': diag, 'injected_value': injected_value,
-                        'fit_mu': fit_mu, 'fit_sigma': fit_sigma,
-                        'n_sims': len(data), 'status': 'ok',
+                        'n_sims': len(data), 'status': 'ok', **stats,
                     })
-                    print(f'  {label} diag={diag}: mu={fit_mu:.4e}  sigma={fit_sigma:.4e}  (n={len(data)})')
+                    print(f'  {label} diag={diag}: '
+                          f"mu={stats['fit_mu']:.4e}  sigma={stats['fit_sigma']:.4e}  "
+                          f"median={stats['median']:.4e}  (n={len(data)})")
 
                     tag = (f'b3d_1var_nu{freq}_lx0_nobl_lcdm{jackknife}_{ell_range}_b{bn}'
                            f'_{noise}noise{"_gnl" if gnl else ""}_fnl{fnl}')
@@ -388,31 +406,32 @@ def run_scan(args, freq, bn, ell_range, jackknife):
                     title_name = (f'{freq}GHz lCDM ell {ell_range}, {bn} bins, diag={diag}, '
                                   f'noise={noise}, injected fnl={fnl}')
                     plot_fnl_hists(data, injected_value, title_name, outpath,
-                                    param_name='gNL' if gnl else 'fNL')
+                                    param_name='gNL' if gnl else 'fNL',
+                                    center_on_injected=center_on_injected)
 
     return pd.DataFrame(results)
 
 
 def print_scan_table(df):
-    """Prints a clean, copy-pasteable table of fitted Gaussian parameters."""
     ok = df[df['status'] == 'ok'].copy()
-    ok['fit_mu'] = ok['fit_mu'].map(lambda x: f'{x:.4e}')
-    ok['fit_sigma'] = ok['fit_sigma'].map(lambda x: f'{x:.4e}')
-    ok['injected_value'] = ok['injected_value'].map(lambda x: f'{x:.4e}' if x is not None else '')
+    display_cols = ['estimator', 'noise', 'injected_fnl', 'injected_value', 'diag',
+                     'fit_mu', 'fit_sigma', 'bias_mu', 'median', 'p16', 'p84',
+                     'bias_median', 'n_sims']
+    for c in ['injected_value', 'fit_mu', 'fit_sigma', 'bias_mu', 'median', 'p16', 'p84', 'bias_median']:
+        ok[c] = ok[c].map(lambda x: f'{x:.4e}' if pd.notnull(x) else '')
 
-    cols = ['estimator', 'noise', 'injected_fnl', 'injected_value', 'diag', 'fit_mu', 'fit_sigma', 'n_sims']
-    print("\n" + "=" * 100)
-    print("FITTED GAUSSIAN PARAMETERS (copy-paste table)")
-    print("=" * 100)
-    print(ok[cols].to_string(index=False))
-    print("=" * 100)
+    print("\n" + "=" * 140)
+    print("SUMMARY STATISTICS (copy-paste table) — bias_* = recovered - injected, i.e. 0 = perfectly unbiased")
+    print("=" * 140)
+    print(ok[display_cols].to_string(index=False))
+    print("=" * 140)
 
     missing = df[df['status'] == 'missing_files']
     if len(missing):
         print(f"\n{len(missing)} combo(s) skipped due to missing files:")
         for _, row in missing.iterrows():
-            print(f"  estimator={row['estimator']} noise={row['noise']} fnl={row['injected_fnl']} diag={row['diag']}")
-
+            print(f"  estimator={row['estimator']} noise={row['noise']} "
+                  f"fnl={row['injected_fnl']} diag={row['diag']}")
 # ---------------------------------------------------------------------------
 # CLI
 #
