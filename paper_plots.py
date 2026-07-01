@@ -324,12 +324,6 @@ ALL_FNL_VALUES = ['0000', '0001', '0010', '0032', '0100', '1000']
 
 
 def run_scan(args, freq, bn, ell_range, jackknife):
-    """
-    Runs every combination of estimator (linear/cubic) x noise (with/without)
-    x fnl value, collecting fitted Gaussian parameters into one table instead
-    of just producing plots. Skips combos with missing files rather than
-    aborting the whole scan.
-    """
     results = []
 
     for gnl in [False, True]:
@@ -340,6 +334,19 @@ def run_scan(args, freq, bn, ell_range, jackknife):
 
             for fnl in ALL_FNL_VALUES:
                 injected_value = parse_injected_value(fnl, gnl)
+                label = f'estimator={estimator_label} noise={noise} fnl={fnl}'
+
+                ok = preflight_check(args.bk, freq, bn, ell_range, jackknife,
+                                      data_path, covdata_path, fnl, gnl, label=label)
+                if not ok:
+                    print(f'  [skip] {label}: preflight failed, see above')
+                    for diag in [True, False]:
+                        results.append({
+                            'estimator': estimator_label, 'noise': noise, 'injected_fnl': fnl,
+                            'diag': diag, 'injected_value': injected_value,
+                            'fit_mu': None, 'fit_sigma': None, 'n_sims': None, 'status': 'missing_files',
+                        })
+                    continue
 
                 try:
                     sim_cov_bls = None
@@ -355,7 +362,7 @@ def run_scan(args, freq, bn, ell_range, jackknife):
                     fnl_hists = run_amplitude_statistics(sims_bl, fiducial_bl, sim_cov_bls)
 
                 except FileNotFoundError as e:
-                    print(f'  [skip] estimator={estimator_label} noise={noise} fnl={fnl}: {e}')
+                    print(f'  [skip] {label}: {e}')
                     for diag in [True, False]:
                         results.append({
                             'estimator': estimator_label, 'noise': noise, 'injected_fnl': fnl,
@@ -373,10 +380,8 @@ def run_scan(args, freq, bn, ell_range, jackknife):
                         'fit_mu': fit_mu, 'fit_sigma': fit_sigma,
                         'n_sims': len(data), 'status': 'ok',
                     })
-                    print(f'  estimator={estimator_label:6s} noise={noise:7s} fnl={fnl} diag={diag}: '
-                          f'mu={fit_mu:.4e}  sigma={fit_sigma:.4e}  (n={len(data)})')
+                    print(f'  {label} diag={diag}: mu={fit_mu:.4e}  sigma={fit_sigma:.4e}  (n={len(data)})')
 
-                    # Also make the plot while we're here, same as run_one_config
                     tag = (f'b3d_1var_nu{freq}_lx0_nobl_lcdm{jackknife}_{ell_range}_b{bn}'
                            f'_{noise}noise{"_gnl" if gnl else ""}_fnl{fnl}')
                     outpath = os.path.join(args.outdir, f'{tag}_diag{diag}.png')
@@ -443,11 +448,12 @@ def build_parser():
 
 
 def resolve_args(args):
+    if args.covdata == 'None':
+        args.covdata = None
+
     if not args.scan_all:
         args.data = resolve_path(args.data, args.noise)
-        if args.covdata == 'None':
-            args.covdata = None
-        else:
+        if args.covdata is not None:
             args.covdata = resolve_path(args.covdata, args.noise)
 
     if args.outdir is None:
@@ -458,7 +464,40 @@ def resolve_args(args):
         args.simn = None
 
     return args
+def preflight_check(bk_type, freq, bn, ell_range, jackknife, data_path, covdata_path, fnl, calc_gnl, label=''):
+    """
+    Prints every path/pattern this combo will look for, and reports
+    existence, WITHOUT loading any actual file contents. Call this before
+    load_experiment_data so missing paths are obvious up front.
+    """
+    print(f"\n  --- preflight [{label}] ---")
+    print(f"  data_path   : {data_path}   exists={os.path.isdir(data_path) if data_path else 'N/A (None)'}")
+    print(f"  covdata_path: {covdata_path}   exists={os.path.isdir(covdata_path) if covdata_path else 'N/A (None or not used)'}")
 
+    if bk_type != 'B33y':
+        print(f"  [WARN] unrecognized bk_type '{bk_type}', pattern below will not apply")
+        return False
+
+    tag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm{jackknife}_{ell_range}_b{bn}'
+    if fnl != '':
+        sim_pattern = os.path.join(data_path or '<None>', f'{tag}_*_fnl{fnl}.dat')
+    else:
+        sim_pattern = os.path.join(data_path or '<None>', f'{tag}_*.dat')
+    print(f"  sim glob    : {sim_pattern}")
+    n_matches = len(glob.glob(sim_pattern)) if data_path and os.path.isdir(data_path) else 0
+    print(f"                -> {n_matches} file(s) matched")
+
+    nojacktag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm_{ell_range}_b{bn}'
+    fiducial_base = (data_path if covdata_path is None else covdata_path) or '<None>'
+    template_base = nojacktag.replace("b3d", "mb3d_fnle")
+    if calc_gnl:
+        template_base += '_cubic'
+    fiducial_path = os.path.join(fiducial_base, f'{template_base}.dat')
+    print(f"  fiducial    : {fiducial_path}   exists={os.path.exists(fiducial_path)}")
+
+    all_ok = bool(data_path and os.path.isdir(data_path) and n_matches > 0 and os.path.exists(fiducial_path))
+    print(f"  --- preflight result: {'OK' if all_ok else 'MISSING SOMETHING'} ---")
+    return all_ok
 
 def main():
     args = resolve_args(build_parser().parse_args())
