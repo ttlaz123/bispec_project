@@ -410,7 +410,8 @@ def print_scan_table(df):
 
 # ---------------------------------------------------------------------------
 # CLI
-#def build_parser():
+#
+def build_parser():
     p = argparse.ArgumentParser(description='Calculate and plot bispectrum fNL/gNL statistics (simulation-only).')
     p.add_argument('--bk', type=str, default='B33y')
     p.add_argument('--id', type=int, default=-1, help='Row index (-1 = last row).')
