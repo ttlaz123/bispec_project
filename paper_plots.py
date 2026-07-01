@@ -9,7 +9,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.stats import norm
-
+import glob
+import re
 print('Done importing')
 BASE_USERS = {
     'liuto': '/n/holylfs06/LABS/kovac_lab/users/liuto/B33y/',
@@ -25,34 +26,66 @@ NOISE_DIRS = {
 # Data loading (simulation-only; no real/unblinded data is ever read here)
 # ---------------------------------------------------------------------------
 
+
+def find_sim_files(data_path, tag, fnl):
+    """
+    Finds all simulation files for a given tag by globbing the directory,
+    rather than assuming any particular index range or starting value.
+    Real data is excluded structurally: sim filenames never contain a
+    dp-tag (e.g. 'dp1102'), so a plain glob on the no-dp tag naturally
+    can't match real-data files, but we double-check explicitly anyway.
+    """
+    if fnl != '':
+        pattern = os.path.join(data_path, f'{tag}_*_fnl{fnl}.dat')
+    else:
+        pattern = os.path.join(data_path, f'{tag}_*.dat')
+
+    matches = glob.glob(pattern)
+
+    # Defense in depth: explicitly drop anything with a dp-tag, in case a
+    # directory's naming convention ever changes.
+    dp_pattern = re.compile(r'_dp\d+_')
+    sim_files = [f for f in matches if not dp_pattern.search(os.path.basename(f))]
+
+    # Extract the index (the integer between the tag and the optional _fnl suffix)
+    index_pattern = re.compile(re.escape(tag) + r'_(\d+)(?:_fnl\d+)?\.dat$')
+    indexed = []
+    for f in sim_files:
+        m = index_pattern.search(os.path.basename(f))
+        if m:
+            indexed.append((int(m.group(1)), f))
+    indexed.sort(key=lambda x: x[0])
+
+    if not indexed:
+        raise FileNotFoundError(f"No simulation files found matching pattern: {pattern}")
+
+    indices = [i for i, _ in indexed]
+    print(f"Found {len(indexed)} sim files for tag '{tag}', "
+          f"index range {min(indices)}-{max(indices)} "
+          f"({'contiguous' if indices == list(range(min(indices), max(indices)+1)) else 'NON-CONTIGUOUS, check for gaps'})")
+
+    return indexed
 def resolve_path(path, noise):
     """Expand 'liuto'/'namikawa' shorthand into a full noise-aware directory path."""
     if path in BASE_USERS:
         return os.path.join(BASE_USERS[path], NOISE_DIRS[noise])
     return path
 
-
 def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,
                           jackknife, fiducial_data_path=None, fnl='', calc_gnl=False):
     """
-    Loads SIMULATION-ONLY bispectrum data. Real/unblinded data is never
-    loaded by this function or anywhere else in this script.
-
-    Returns:
-        (sim_bl, fiducial_bl)
+    Loads SIMULATION-ONLY bispectrum data. Files are discovered by globbing
+    the directory rather than assuming any index range; any file containing
+    a dp-tag (e.g. dp1102) is real data and is explicitly excluded.
     """
     print(f"Loading simulation data for experiment: {bk_type}, frequency: {freq}")
 
     if not os.path.isdir(data_path):
         raise FileNotFoundError(f"Data directory not found at {data_path}")
-
     if bk_type != 'B33y':
         raise FileNotFoundError(f"Unknown experiment type '{bk_type}'")
 
     tag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm{jackknife}_{ell_range}_b{bn}'
-    sim_bl_template = os.path.join(data_path, f'{tag}_' + '{}.dat')
-    if fnl != '':
-        sim_bl_template = os.path.join(data_path, f'{tag}_' + '{}' + f'_fnl{fnl}.dat')
 
     nojacktag = f'b3d_1var_nu{freq}_lx0_nobl_lcdm_{ell_range}_b{bn}'
     if fiducial_data_path is None:
@@ -61,25 +94,29 @@ def load_experiment_data(bk_type, freq, bn, ell_range, simn, data_path, data_id,
     if calc_gnl:
         template_base += '_cubic'
     fiducial_bl_path = os.path.join(fiducial_data_path, f'{template_base}.dat')
-
     if not os.path.exists(fiducial_bl_path):
         raise FileNotFoundError(f"Fiducial file not found: {fiducial_bl_path}")
     fiducial_bl = np.loadtxt(fiducial_bl_path, unpack=True)
 
-    # Sims are indexed 0..simn-1 (confirmed: index 0 is a real sim, not
-    # special-cased data). Peek at sim 0 to resolve data_id=-1 (last row).
-    print(f'Loading sim_bl from template: {sim_bl_template}')
-    first_file = sim_bl_template.format(0)
-    first_arr = np.loadtxt(first_file).T
+    indexed_files = find_sim_files(data_path, tag, fnl)
+
+    if simn is not None and len(indexed_files) < simn:
+        raise FileNotFoundError(
+            f"Requested simn={simn} but only found {len(indexed_files)} sim files "
+            f"for tag '{tag}' (fnl='{fnl}') in {data_path}")
+    if simn is not None:
+        indexed_files = indexed_files[:simn]  # take the first `simn` by index order
+
+    first_idx, first_path = indexed_files[0]
+    first_arr = np.loadtxt(first_path).T
     if data_id == -1:
         data_id = first_arr.shape[0] - 1
 
     sim_bl_list = [first_arr[data_id, :]]
-    for i in range(1, simn):
-        file_path = sim_bl_template.format(i)
-        if i % 50 == 0:
-            print(f"Loading simulated file {i}/{simn}: {file_path}")
-        sim_bl_list.append(np.loadtxt(file_path).T[data_id, :])
+    for n, (idx, path) in enumerate(indexed_files[1:], start=1):
+        if n % 50 == 0:
+            print(f"Loading simulated file {n}/{len(indexed_files)}: {path}")
+        sim_bl_list.append(np.loadtxt(path).T[data_id, :])
     sim_bl = np.array(sim_bl_list)
 
     valid_indices = fiducial_bl != 0
