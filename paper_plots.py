@@ -316,53 +316,145 @@ def run_one_config(args, freq, bn, ell_range, jackknife):
 
         outpath = os.path.join(args.outdir, f'{tag}_diag{diag}.png')
         plot_fnl_hists(fnl_hists[diag], injected_value, title_name, outpath, param_name=param_label)
+# ---------------------------------------------------------------------------
+# Full scan mode: cubic vs linear × noise vs no-noise × all fnl values
+# ---------------------------------------------------------------------------
 
+ALL_FNL_VALUES = ['0000', '0001', '0010', '0032', '0100', '1000']
+
+
+def run_scan(args, freq, bn, ell_range, jackknife):
+    """
+    Runs every combination of estimator (linear/cubic) x noise (with/without)
+    x fnl value, collecting fitted Gaussian parameters into one table instead
+    of just producing plots. Skips combos with missing files rather than
+    aborting the whole scan.
+    """
+    results = []
+
+    for gnl in [False, True]:
+        estimator_label = 'cubic' if gnl else 'linear'
+        for noise in ['with', 'without']:
+            data_path = resolve_path('liuto', noise)
+            covdata_path = None if args.covdata is None else resolve_path(args.covdata, noise)
+
+            for fnl in ALL_FNL_VALUES:
+                injected_value = parse_injected_value(fnl, gnl)
+
+                try:
+                    sim_cov_bls = None
+                    if covdata_path is not None:
+                        sim_cov_bls, _ = load_experiment_data(
+                            args.bk, freq, bn, ell_range, args.simn, covdata_path,
+                            args.id, jackknife, fiducial_data_path=covdata_path, fnl='0000')
+
+                    sims_bl, fiducial_bl = load_experiment_data(
+                        args.bk, freq, bn, ell_range, args.simn, data_path,
+                        args.id, jackknife, fnl=fnl, calc_gnl=gnl)
+
+                    fnl_hists = run_amplitude_statistics(sims_bl, fiducial_bl, sim_cov_bls)
+
+                except FileNotFoundError as e:
+                    print(f'  [skip] estimator={estimator_label} noise={noise} fnl={fnl}: {e}')
+                    for diag in [True, False]:
+                        results.append({
+                            'estimator': estimator_label, 'noise': noise, 'injected_fnl': fnl,
+                            'diag': diag, 'injected_value': injected_value,
+                            'fit_mu': None, 'fit_sigma': None, 'n_sims': None, 'status': 'missing_files',
+                        })
+                    continue
+
+                for diag in [True, False]:
+                    data = np.asarray(fnl_hists[diag])
+                    fit_mu, fit_sigma = norm.fit(data)
+                    results.append({
+                        'estimator': estimator_label, 'noise': noise, 'injected_fnl': fnl,
+                        'diag': diag, 'injected_value': injected_value,
+                        'fit_mu': fit_mu, 'fit_sigma': fit_sigma,
+                        'n_sims': len(data), 'status': 'ok',
+                    })
+                    print(f'  estimator={estimator_label:6s} noise={noise:7s} fnl={fnl} diag={diag}: '
+                          f'mu={fit_mu:.4e}  sigma={fit_sigma:.4e}  (n={len(data)})')
+
+                    # Also make the plot while we're here, same as run_one_config
+                    tag = (f'b3d_1var_nu{freq}_lx0_nobl_lcdm{jackknife}_{ell_range}_b{bn}'
+                           f'_{noise}noise{"_gnl" if gnl else ""}_fnl{fnl}')
+                    outpath = os.path.join(args.outdir, f'{tag}_diag{diag}.png')
+                    title_name = (f'{freq}GHz lCDM ell {ell_range}, {bn} bins, diag={diag}, '
+                                  f'noise={noise}, injected fnl={fnl}')
+                    plot_fnl_hists(data, injected_value, title_name, outpath,
+                                    param_name='gNL' if gnl else 'fNL')
+
+    return pd.DataFrame(results)
+
+
+def print_scan_table(df):
+    """Prints a clean, copy-pasteable table of fitted Gaussian parameters."""
+    ok = df[df['status'] == 'ok'].copy()
+    ok['fit_mu'] = ok['fit_mu'].map(lambda x: f'{x:.4e}')
+    ok['fit_sigma'] = ok['fit_sigma'].map(lambda x: f'{x:.4e}')
+    ok['injected_value'] = ok['injected_value'].map(lambda x: f'{x:.4e}' if x is not None else '')
+
+    cols = ['estimator', 'noise', 'injected_fnl', 'injected_value', 'diag', 'fit_mu', 'fit_sigma', 'n_sims']
+    print("\n" + "=" * 100)
+    print("FITTED GAUSSIAN PARAMETERS (copy-paste table)")
+    print("=" * 100)
+    print(ok[cols].to_string(index=False))
+    print("=" * 100)
+
+    missing = df[df['status'] == 'missing_files']
+    if len(missing):
+        print(f"\n{len(missing)} combo(s) skipped due to missing files:")
+        for _, row in missing.iterrows():
+            print(f"  estimator={row['estimator']} noise={row['noise']} fnl={row['injected_fnl']} diag={row['diag']}")
 
 # ---------------------------------------------------------------------------
 # CLI
-# ---------------------------------------------------------------------------
-
-def build_parser():
+#def build_parser():
     p = argparse.ArgumentParser(description='Calculate and plot bispectrum fNL/gNL statistics (simulation-only).')
-    p.add_argument('--bk', type=str, default='B33y', help='Experiment type.')
-    p.add_argument('--id', type=int, default=-1, help='Row index for data extraction (-1 = last row).')
-    p.add_argument('--freqs', nargs='+', default=['100'], help='Frequencies to analyze.')
-    p.add_argument('--simn', type=int, default=499,
-                   help='Number of simulations to load (indices 0..simn-1). '
-                        'Use 499 for the full bispec sim set (0-499).')
+    p.add_argument('--bk', type=str, default='B33y')
+    p.add_argument('--id', type=int, default=-1, help='Row index (-1 = last row).')
+    p.add_argument('--freqs', nargs='+', default=['100'])
+    p.add_argument('--simn', type=int, default=0,
+                   help='Number of sims to use (first N found, sorted by index). 0 = use all found.')
 
-    p.add_argument('--ell_ranges', nargs='+', default=['oL20-350'], help='ell_range tag(s) to sweep.')
-    p.add_argument('--bins', nargs='+', type=int, default=[9], help='Bin count(s) to sweep.')
-    p.add_argument('--jackknifes', nargs='+', default=[''], help='Jackknife tag(s) to sweep (e.g. j1 j2 ...).')
+    p.add_argument('--ell_ranges', nargs='+', default=['oL20-350'])
+    p.add_argument('--bins', nargs='+', type=int, default=[9])
+    p.add_argument('--jackknifes', nargs='+', default=[''])
 
     p.add_argument('--data', type=str, default='liuto',
                    help="Data directory, or shorthand 'liuto' / 'namikawa'.")
     p.add_argument('--covdata', type=str, default='None',
-                   help="Covariance data directory, shorthand, or 'None' to use leave-one-out from --data sims.")
+                   help="Covariance directory, shorthand, or 'None' for leave-one-out.")
     p.add_argument('--noise', choices=['with', 'without'], default='with',
-                   help="'with' -> bispec_bbb_almflmglm (noise), "
-                        "'without' -> bispec_bbb_flmglm (no noise). "
-                        "Only applies when --data/--covdata is given as shorthand.")
+                   help="Ignored when --scan-all is set (scan covers both).")
 
-    p.add_argument('--fnl', default='', help='Injected fnl tag, e.g. 0000, 0001, 0010, 0032, 0100, 1000.')
-    p.add_argument('--gnl', action='store_true', help='Use the cubic estimator (gNL) instead of linear (fNL).')
-    p.add_argument('-o', '--overwrite', action='store_true', help='Recompute even if a cached csv exists.')
-    p.add_argument('--outdir', default=None, help='Output directory. Auto-named if not given.')
+    p.add_argument('--fnl', default='', help="Ignored when --scan-all is set (scan covers all fnl values).")
+    p.add_argument('--gnl', action='store_true', help="Ignored when --scan-all is set (scan covers both).")
+    p.add_argument('--scan-all', action='store_true',
+                   help='Run every combo of estimator x noise x fnl in one pass and print a summary table.')
+    p.add_argument('--table-csv', default=None,
+                   help='If set (with --scan-all), also writes the summary table to this CSV path.')
+
+    p.add_argument('-o', '--overwrite', action='store_true')
+    p.add_argument('--outdir', default=None)
     return p
 
 
 def resolve_args(args):
-    args.data = resolve_path(args.data, args.noise)
-
-    if args.covdata == 'None':
-        args.covdata = None
-    else:
-        args.covdata = resolve_path(args.covdata, args.noise)
+    if not args.scan_all:
+        args.data = resolve_path(args.data, args.noise)
+        if args.covdata == 'None':
+            args.covdata = None
+        else:
+            args.covdata = resolve_path(args.covdata, args.noise)
 
     if args.outdir is None:
-        est = "gnl" if args.gnl else "fnl"
-        args.outdir = f'{est}_figs_{args.noise}noise'
+        args.outdir = 'scan_figs' if args.scan_all else f'{"gnl" if args.gnl else "fnl"}_figs_{args.noise}noise'
     os.makedirs(args.outdir, exist_ok=True)
+
+    if args.simn == 0:
+        args.simn = None
 
     return args
 
@@ -375,11 +467,19 @@ def main():
             for ell_range in args.ell_ranges:
                 for jack in args.jackknifes:
                     jackknife = ensure_underscores(jack)
-                    try:
-                        run_one_config(args, freq, bn, ell_range, jackknife)
-                    except FileNotFoundError as e:
-                        print(f'Skipping combo (freq={freq}, bn={bn}, ell_range={ell_range}, '
-                              f'jack={jack}): {e}')
+                    if args.scan_all:
+                        print(f"\n--- Scanning freq={freq} bn={bn} ell_range={ell_range} jack={jack} ---")
+                        df = run_scan(args, freq, bn, ell_range, jackknife)
+                        print_scan_table(df)
+                        if args.table_csv:
+                            df.to_csv(args.table_csv, index=False)
+                            print(f"\nFull results also written to: {args.table_csv}")
+                    else:
+                        try:
+                            run_one_config(args, freq, bn, ell_range, jackknife)
+                        except FileNotFoundError as e:
+                            print(f'Skipping combo (freq={freq}, bn={bn}, ell_range={ell_range}, '
+                                  f'jack={jack}): {e}')
 
 
 if __name__ == "__main__":
