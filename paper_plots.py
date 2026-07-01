@@ -209,26 +209,18 @@ def parse_injected_value(fnl_str, is_gnl):
 # Plotting
 # ---------------------------------------------------------------------------
 def _plot_single_panel(ax, data, injected_value, xlabel, hist_color, fit_color,
-                        line_color, param_name, center_on_injected=False):
+                        line_color, param_name):
+    """Histogram + Gaussian fit + injected-value line, on a fixed x-axis
+    range that is always symmetric about zero (scale adapts to the data,
+    but zero always sits at the visual center)."""
     data = np.asarray(data)
 
-    if center_on_injected and injected_value is not None:
-        data = data - injected_value
-        plotted_injected = 0.0
-        # xlabel intentionally left unchanged (still just "fNL"/"gNL"),
-        # per request — the shift is implicit in the plot, not the label.
-    else:
-        plotted_injected = injected_value
-
     fit_mu, fit_sigma = norm.fit(data)
-    median = np.median(data)
-    p16, p84 = np.percentile(data, [16, 84])
 
     n_bins = 40
     counts, bin_edges, _ = ax.hist(
         data, bins=n_bins, alpha=0.65, color=hist_color, edgecolor='white', linewidth=0.5,
-        label=f'Simulated {param_name}\nGaussian: {fit_mu:.2e} $\\pm$ {fit_sigma:.2e}\n'
-              f'Median: {median:.2e} [{p16:.2e}, {p84:.2e}]'
+        label=f'Simulated {param_name}\n{fit_mu:.2e} $\\pm$ {fit_sigma:.2e}'
     )
 
     bin_width = bin_edges[1] - bin_edges[0]
@@ -236,29 +228,33 @@ def _plot_single_panel(ax, data, injected_value, xlabel, hist_color, fit_color,
     ax.plot(x_smooth, norm.pdf(x_smooth, fit_mu, fit_sigma) * len(data) * bin_width,
             color=fit_color, linewidth=2, label='Gaussian fit')
 
-    ax.axvline(median, color=fit_color, linestyle=':', linewidth=1.5, label='Median')
-    ax.axvspan(p16, p84, color=fit_color, alpha=0.12, label='16th-84th percentile')
+    if injected_value is not None:
+        ax.axvline(injected_value, color=line_color, linestyle='--', linewidth=2,
+                   label=f'Injected {param_name} = {injected_value:.2e}')
 
-    if plotted_injected is not None:
-        ax.axvline(plotted_injected, color=line_color, linestyle='--', linewidth=2,
-                   label=f'Injected {param_name} = {plotted_injected:.2e}')
+    # Symmetric x-axis: zero is always centered, scale set by whichever is
+    # largest in magnitude among the data extent and the injected value.
+    candidates = [abs(data.min()), abs(data.max())]
+    if injected_value is not None:
+        candidates.append(abs(injected_value))
+    half_range = max(candidates) * 1.1
+    ax.set_xlim(-half_range, half_range)
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel('Count')
-    ax.legend(loc='upper right', fontsize=8, framealpha=0.9)
+    ax.legend(loc='upper right', fontsize=9, framealpha=0.9)
     ax.grid(axis='y', linestyle='--', alpha=0.4)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-def plot_fnl_hists(sim_fnl, injected_value, title_name, outpath, param_name="fNL",
-                    center_on_injected=False):
+
+def plot_fnl_hists(sim_fnl, injected_value, title_name, outpath, param_name="fNL"):
     plt.rcParams.update({'font.size': 12, 'axes.titlesize': 13,
                           'axes.titleweight': 'bold', 'figure.facecolor': 'white'})
 
     fig, ax1 = plt.subplots(1, 1, figsize=(9, 6))
-    _plot_single_panel(ax1, sim_fnl, injected_value, param_name,   # <- plain label
-                        '#6BAED6', '#08519C', '#CB181D', param_name,
-                        center_on_injected=center_on_injected)
+    _plot_single_panel(ax1, sim_fnl, injected_value, param_name,
+                        '#6BAED6', '#08519C', '#CB181D', param_name)
     ax1.set_title(title_name)
 
     print('Saving: ' + str(outpath))
